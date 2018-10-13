@@ -19,11 +19,27 @@ def plot_data(data):
     plt.title('Data')
     plt.show()
 
+def calc_duration(data):
+    dur = data.loc[data.index[-1]]['time']-data.loc[1]['time']
+    return dur
+
+def calc_v_extreme(data):
+    max_val = data['voltage'].max()
+    min_val = data['voltage'].min()
+    store = (max_val, min_val)
+    return store
+
+
 def main():
     headers = ['time','voltage']
-    data = pd.read_csv("test_data1.csv",names = headers)
+    metrics = {}
+    data = pd.read_csv("test_data1.csv", names=headers)
     plot_data(data)
-
+    extreme = calc_v_extreme(data)
+    metrics['voltage_extremes'] = extreme
+    dur = calc_duration(data)
+    metrics['duration']= dur
+    print(metrics)
 
 if __name__ == "__main__":
     main()
