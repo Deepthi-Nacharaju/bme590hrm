@@ -3,17 +3,10 @@ import os
 import matplotlib.pyplot as plt
 import numpy
 from numpy import diff
+import sys
 import scipy
-
+import json
 # Load all csv files from data folder
-
-def load_csv():
-    path = os.getcwd()
-    new_path = os.getcwd() + '/data'
-    os.chdir(new_path)
-    for file in os.listdir(os.getcwd()):
-        if file.split('.')[1] == 'csv':
-            file.split('.')[0] = pd.read_csv(file)
 
 def plot_data(data,index):
     data_points =[]
@@ -58,30 +51,50 @@ def find_peaks_two(dx, dy):
             indices.append(index)
             index_old = index
         y_old = y
-
     headers = ['index','time','voltage']
     return_df = pd.DataFrame(return_values,columns = headers)
     return return_df
 
+def user_input():
+    try:
+        interval = sys.argv[1]
+    except:
+        interval = 60
+    return interval
+
+def write_json(file, metrics):
+    json_name = file.split('.')[0] + '.json'
+    with open(json_name, 'w') as outfile:
+        json.dump(metrics, outfile)
+
 def main():
-    headers = ['time','voltage']
-    metrics = {}
-    data = pd.read_csv("test_data1.csv", names=headers)
-    extreme = calc_v_extreme(data)
-    metrics['voltage_extremes'] = extreme
-    dur = calc_duration(data)
-    metrics['duration']= dur
-    dy = find_peaks(data)
-    dx = data.drop([0, 0])
-    found = find_peaks_two(dx, dy)
-    plt.plot(dx['time'], dy)
-    plt.scatter(found['time'],found['voltage'], c='red')
-    plt.title('First Derivative with Peak Detection')
-    plt.show()
-    plot_data(data, found['index'])
-    metrics['num_beats'] = len(found['time'])
-    metrics['beats'] = found['time']
-    print(metrics)
+    interval = user_input()
+    path = os.getcwd()
+    new_path = os.getcwd() + '/data'
+    os.chdir(new_path)
+    headers = ['time', 'voltage']
+    for file in os.listdir(os.getcwd()):
+        if file.split('.')[1] == 'csv':
+            metrics = {}
+            data = pd.read_csv(file, names=headers)
+            extreme = calc_v_extreme(data)
+            metrics['voltage_extremes'] = extreme
+            dur = calc_duration(data)
+            metrics['duration']= dur
+            dy = find_peaks(data)
+            dx = data.drop([0, 0])
+            found = find_peaks_two(dx, dy)
+            plt.plot(dx['time'], dy)
+            plt.scatter(found['time'],found['voltage'], c='red')
+            plt.title('First Derivative with Peak Detection')
+            plt.show()
+            plot_data(data, found['index'])
+            metrics['num_beats'] = len(found['time'])
+            metrics['beats'] = found['time']
+            bpm = metrics['num_beats']/metrics['duration']*interval
+            metrics['mean_hr_bpm']= bpm
+            print(metrics)
+            write_json(file, metrics)
 
 if __name__ == "__main__":
     main()
