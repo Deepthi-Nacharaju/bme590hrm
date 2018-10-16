@@ -11,9 +11,9 @@ import json
 def plot_data(data, index):
     """
 
-    :param data:
-    :param index:
-    :return:
+    :param data: dataframe from reading csv
+    :param index: where beats occur in dataframe
+    :return: labeled plot with both data and red markers of peak detection
     """
     data_points = []
     headers = ['time', 'voltage']
@@ -33,10 +33,10 @@ def plot_data(data, index):
 def plot_derivative(dx, dy, found):
     """
 
-    :param dx:
-    :param dy:
-    :param found:
-    :return:
+    :param dx: time dataframe adjusted for derivative array size change
+    :param dy: derivative of data
+    :param found: dataframe containing index, time, and voltage of beats detected
+    :return: labeled plot with both derivative data and red markers of peak detection
     """
     plt.plot(dx['time'], dy)
     plt.scatter(found['time'], found['voltage'], c='red')
@@ -47,8 +47,8 @@ def plot_derivative(dx, dy, found):
 def calc_duration(data):
     """
 
-    :param data:
-    :return:
+    :param data: dataframe from reading csv
+    :return: duration of time column in data
     """
     dur = data.loc[data.index[-1]]['time']-data.loc[1]['time']
     return dur
@@ -57,8 +57,8 @@ def calc_duration(data):
 def calc_v_extreme(data):
     """
 
-    :param data:
-    :return:
+    :param data: dataframe from reading csv
+    :return: tuple containing minimum and maximum values
     """
     max_val = data['voltage'].max()
     min_val = data['voltage'].min()
@@ -69,8 +69,8 @@ def calc_v_extreme(data):
 def find_peaks(data):
     """
 
-    :param data:
-    :return:
+    :param data: dataframe from reading csv
+    :return: differentiated voltage array
     """
     dx = data.loc[3]['time']-data.loc[2]['time']
     dy = diff(data['voltage'])/dx
@@ -80,9 +80,9 @@ def find_peaks(data):
 def find_peaks_two(dx, dy):
     """
 
-    :param dx:
-    :param dy:
-    :return:
+    :param dx: time dataframe adjusted for derivative array size change
+    :param dy: differentiated voltage array
+    :return: data frame containing indices, time, and voltage where peak occurs
     """
     peak_max = dy.max()*.5
     d = {'indices': [], 'time': [], 'voltage': []}
@@ -104,23 +104,24 @@ def find_peaks_two(dx, dy):
 def user_input():
     """
 
-    :return:
+    :return: user chosen input for time window over which to average
     """
-    try:
-        interval = sys.argv[1]
-    except:
-        interval = 60
+    interval = sys.argv[1]
+    #try:
+     #   interval = sys.argv[1]
+    #except:
+    #    interval = 60
     return interval
 
 
 def create_metrics(interval, found, extreme, dur):
     """
 
-    :param interval:
-    :param found:
-    :param extreme:
-    :param dur:
-    :return:
+    :param interval: user chosen interval
+    :param found: dataframe containing indices, time, and voltage columns for where peaks occur
+    :param extreme: tuple containing max and min values
+    :param dur: duration of time vector from input
+    :return: dictionary called metrics that holds all requested values
     """
     metrics = dict()
     metrics['voltage_extremes'] = extreme
@@ -136,9 +137,9 @@ def create_metrics(interval, found, extreme, dur):
 def write_json(file, metrics):
     """
 
-    :param file:
-    :param metrics:
-    :return:
+    :param file: name of imported csv file
+    :param metrics: requested output that needs to be saved as a json
+    :return: saves metrics into json
     """
     json_name = file.split('.')[0] + '.json'
     with open(json_name, 'w') as outfile:
@@ -148,7 +149,7 @@ def write_json(file, metrics):
 def main():
     """
 
-    :return:
+    :return: saved json file of dictionary metrics that holds all requested values
     """
     interval = user_input()
     path = os.getcwd()
