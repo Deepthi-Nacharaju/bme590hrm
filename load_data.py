@@ -9,6 +9,12 @@ import json
 
 
 def plot_data(data, index):
+    """
+
+    :param data:
+    :param index:
+    :return:
+    """
     data_points = []
     headers = ['time', 'voltage']
     for x in index:
@@ -25,6 +31,13 @@ def plot_data(data, index):
 
 
 def plot_derivative(dx, dy, found):
+    """
+
+    :param dx:
+    :param dy:
+    :param found:
+    :return:
+    """
     plt.plot(dx['time'], dy)
     plt.scatter(found['time'], found['voltage'], c='red')
     plt.title('First Derivative with Peak Detection')
@@ -32,11 +45,21 @@ def plot_derivative(dx, dy, found):
 
 
 def calc_duration(data):
+    """
+
+    :param data:
+    :return:
+    """
     dur = data.loc[data.index[-1]]['time']-data.loc[1]['time']
     return dur
 
 
 def calc_v_extreme(data):
+    """
+
+    :param data:
+    :return:
+    """
     max_val = data['voltage'].max()
     min_val = data['voltage'].min()
     store = (max_val, min_val)
@@ -44,12 +67,23 @@ def calc_v_extreme(data):
 
 
 def find_peaks(data):
+    """
+
+    :param data:
+    :return:
+    """
     dx = data.loc[3]['time']-data.loc[2]['time']
     dy = diff(data['voltage'])/dx
     return dy
 
 
 def find_peaks_two(dx, dy):
+    """
+
+    :param dx:
+    :param dy:
+    :return:
+    """
     peak_max = dy.max()*.5
     d = {'indices': [], 'time': [], 'voltage': []}
     return_values = []
@@ -68,6 +102,10 @@ def find_peaks_two(dx, dy):
 
 
 def user_input():
+    """
+
+    :return:
+    """
     try:
         interval = sys.argv[1]
     except:
@@ -76,11 +114,19 @@ def user_input():
 
 
 def create_metrics(interval, found, extreme, dur):
+    """
+
+    :param interval:
+    :param found:
+    :param extreme:
+    :param dur:
+    :return:
+    """
     metrics = dict()
     metrics['voltage_extremes'] = extreme
     metrics['duration'] = dur
     metrics['num_beats'] = len(found['time'])
-    metrics['beats'] = found['time']
+    metrics['beats'] = list(found['time'])
     bpm = metrics['num_beats'] / metrics['duration'] * interval
     metrics['mean_hr_bpm'] = bpm
     print(metrics)
@@ -88,12 +134,22 @@ def create_metrics(interval, found, extreme, dur):
 
 
 def write_json(file, metrics):
+    """
+
+    :param file:
+    :param metrics:
+    :return:
+    """
     json_name = file.split('.')[0] + '.json'
     with open(json_name, 'w') as outfile:
         json.dump(metrics, outfile)
 
 
 def main():
+    """
+
+    :return:
+    """
     interval = user_input()
     path = os.getcwd()
     new_path = os.getcwd() + '/data'
