@@ -6,7 +6,7 @@ from numpy import diff
 import sys
 import scipy
 import json
-
+import logging
 
 def plot_data(data, index):
     """
@@ -28,6 +28,7 @@ def plot_data(data, index):
     plt.title('ECG with Peak Detection')
     plt.legend(['ECG', 'Peak Detected'])
     plt.show()
+    logging.info('This only outputs a plot')
 
 
 def plot_derivative(dx, dy, found):
@@ -42,6 +43,7 @@ def plot_derivative(dx, dy, found):
     plt.scatter(found['time'], found['voltage'], c='red')
     plt.title('First Derivative with Peak Detection')
     plt.show()
+    logging.info('only outputs a plot')
 
 
 def calc_duration(data):
@@ -101,20 +103,39 @@ def find_peaks_two(dx, dy):
     return return_df
 
 
-def user_input():
+def user_input(duration):
     """
 
     :return: user chosen input for time window over which to average
     """
-    interval = sys.argv[1]
-    #try:
-     #   interval = sys.argv[1]
-    #except:
-    #    interval = 60
-    return interval
+    try:
+        interval_one = sys.argv[1]
+        interval_two = sys.argv[2]
+        interval = list([float(interval_one),float(interval_two)])
+        out = list([interval, True])
+    except IndexError:
+        interval = duration
+        print('No Time Window Indicated. Default = ' + str(interval))
+        out = list([interval, False])
+    logging.debug('What type of error does this cause? --> IndexError')
+    return out
 
 
-def create_metrics(interval, found, extreme, dur):
+def calc_avg(interval, found, dur):
+    if not interval[1]:
+        bpm = int(float(len(found['time']))/dur*60)
+    else:
+        bpm_range = interval[0]
+        bpm_count = 0
+        for x in found['time']:
+            if x > bpm_range[0] and x < bpm_range[1]:
+                bpm_count += 1
+        bpm = float(bpm_count)/(float(bpm_range[1])-float(bpm_range[0]))*60
+
+    return bpm
+
+
+def create_metrics(interval, found, extreme, dur, bpm):
     """
 
     :param interval: user chosen interval
@@ -127,10 +148,10 @@ def create_metrics(interval, found, extreme, dur):
     metrics['voltage_extremes'] = extreme
     metrics['duration'] = dur
     metrics['num_beats'] = len(found['time'])
-    metrics['beats'] = list(found['time'])
-    bpm = metrics['num_beats'] / metrics['duration'] * interval
     metrics['mean_hr_bpm'] = bpm
+    metrics['beats'] = list(found['time'])
     print(metrics)
+    logging.info('Final Dictionary Creation')
     return metrics
 
 
@@ -145,13 +166,15 @@ def write_json(file, metrics):
     with open(json_name, 'w') as outfile:
         json.dump(metrics, outfile)
 
+    logging.info('make sure everything in metrics is a dictionary and NOT a dataframe')
+
 
 def main():
     """
 
     :return: saved json file of dictionary metrics that holds all requested values
     """
-    interval = user_input()
+
     path = os.getcwd()
     new_path = os.getcwd() + '/data'
     os.chdir(new_path)
@@ -161,10 +184,12 @@ def main():
             data = pd.read_csv(file, names=headers)
             extreme = calc_v_extreme(data)
             dur = calc_duration(data)
+            interval = user_input(dur)
             dy = find_peaks(data)
             dx = data.drop([0, 0])
             found = find_peaks_two(dx, dy)
-            metrics = create_metrics(interval, found, extreme, dur)
+            bpm = calc_avg(interval, found, dur)
+            metrics = create_metrics(interval, found, extreme, dur, bpm)
             plot_derivative(dx, dy, found)
             plot_data(data, found['index'])
             write_json(file, metrics)
