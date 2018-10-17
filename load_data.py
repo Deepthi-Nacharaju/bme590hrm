@@ -135,13 +135,13 @@ def calc_avg(interval, found, dur):
     return bpm
 
 
-def create_metrics(interval, found, extreme, dur, bpm):
+def create_metrics(found, extreme, dur, bpm):
     """
 
-    :param interval: user chosen interval
     :param found: dataframe containing indices, time, and voltage columns for where peaks occur
     :param extreme: tuple containing max and min values
     :param dur: duration of time vector from input
+    :param bpm: average bpm calculations in chosen interval
     :return: dictionary called metrics that holds all requested values
     """
     metrics = dict()
@@ -189,7 +189,7 @@ def main():
             dx = data.drop([0, 0])
             found = find_peaks_two(dx, dy)
             bpm = calc_avg(interval, found, dur)
-            metrics = create_metrics(interval, found, extreme, dur, bpm)
+            metrics = create_metrics(found, extreme, dur, bpm)
             plot_derivative(dx, dy, found)
             plot_data(data, found['index'])
             write_json(file, metrics)
