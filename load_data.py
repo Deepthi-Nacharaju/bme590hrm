@@ -8,7 +8,7 @@ import scipy
 import json
 import logging
 
-def plot_data(data, index):
+def plot_data(data, index, file):
     """
 
     :param data: dataframe from reading csv
@@ -25,13 +25,13 @@ def plot_data(data, index):
     plt.axis('tight')
     plt.ylabel('Voltage')
     plt.xlabel('Time (s)')
-    plt.title('ECG with Peak Detection')
+    plt.title('ECG with Peak Detection: ' + str(file))
     plt.legend(['ECG', 'Peak Detected'])
     plt.show()
     logging.info('This only outputs a plot')
 
 
-def plot_derivative(dx, dy, found):
+def plot_derivative(dx, dy, found, file):
     """
 
     :param dx: time dataframe adjusted for derivative array size change
@@ -41,7 +41,7 @@ def plot_derivative(dx, dy, found):
     """
     plt.plot(dx['time'], dy)
     plt.scatter(found['time'], found['voltage'], c='red')
-    plt.title('First Derivative with Peak Detection')
+    plt.title('First Derivative with Peak Detection: ' + str(file))
     plt.show()
     logging.info('only outputs a plot')
 
@@ -52,7 +52,10 @@ def calc_duration(data):
     :param data: dataframe from reading csv
     :return: duration of time column in data
     """
-    dur = data.loc[data.index[-1]]['time']-data.loc[1]['time']
+    try:
+        dur = data.loc[data.index[-1]]['time']-data.loc[1]['time']
+    except TypeError:
+        dur = float(data.loc[data.index[-1]]['time']) - float(data.loc[1]['time'])
     return dur
 
 
@@ -74,29 +77,37 @@ def find_peaks(data):
     :param data: dataframe from reading csv
     :return: differentiated voltage array
     """
-    dx = data.loc[3]['time']-data.loc[2]['time']
-    dy = diff(data['voltage'])/dx
+    try:
+        dx = data.loc[3]['time']-data.loc[2]['time']
+        dy = diff(data['voltage'])/dx
+    except TypeError:
+        dx = float(data.loc[3]['time'])-float(data.loc[2]['time'])
+        dy = list()
+        for x, num in enumerate(data['voltage']):
+            if not x == 0:
+                dy.append(diff([data.loc[x]['voltage'], data.loc[x]['voltage']])/dx)
     return dy
 
 
-def find_peaks_two(dx, dy):
+def find_peaks_two(dx, dy, data):
     """
 
     :param dx: time dataframe adjusted for derivative array size change
     :param dy: differentiated voltage array
     :return: data frame containing indices, time, and voltage where peak occurs
     """
-    peak_max = dy.max()*.5
+    peak_max = dy.max()*.1
     d = {'indices': [], 'time': [], 'voltage': []}
     return_values = []
     y_old = 0
     index_old = -999
     indices = []
     for index, y in enumerate(dy):
-        if y - y_old < 0 and y > peak_max and index -index_old > 4:
-            return_values.append([index, dx.loc[index]['time'], y])
-            indices.append(index)
-            index_old = index
+        if y - y_old < 0 and y > peak_max and index -index_old > 5:
+            if index_old == -999 or data.loc[index]['time']-data.loc[index_old]['time'] > .25:
+                return_values.append([index, dx.loc[index]['time'], y])
+                indices.append(index)
+                index_old = index
         y_old = y
     headers = ['index', 'time', 'voltage']
     return_df = pd.DataFrame(return_values, columns=headers)
@@ -179,20 +190,25 @@ def main():
     new_path = os.getcwd() + '/data'
     os.chdir(new_path)
     headers = ['time', 'voltage']
+
     for file in os.listdir(os.getcwd()):
-        if file.split('.')[1] == 'csv':
-            data = pd.read_csv(file, names=headers)
-            extreme = calc_v_extreme(data)
-            dur = calc_duration(data)
-            interval = user_input(dur)
-            dy = find_peaks(data)
-            dx = data.drop([0, 0])
-            found = find_peaks_two(dx, dy)
-            bpm = calc_avg(interval, found, dur)
-            metrics = create_metrics(found, extreme, dur, bpm)
-            plot_derivative(dx, dy, found)
-            plot_data(data, found['index'])
-            write_json(file, metrics)
+        print(file)
+        try:
+            if file.split('.')[1] == 'csv':
+                data = pd.read_csv(file, names=headers)
+                extreme = calc_v_extreme(data)
+                dur = calc_duration(data)
+                interval = user_input(dur)
+                dy = find_peaks(data)
+                dx = data.drop([0, 0])
+                found = find_peaks_two(dx, dy, data)
+                bpm = calc_avg(interval, found, dur)
+                metrics = create_metrics(found, extreme, dur, bpm)
+                plot_derivative(dx, dy, found, file)
+                plot_data(data, found['index'], file)
+                write_json(file, metrics)
+        except IndexError:
+            print('Ignore Folder')
 
 
 if __name__ == "__main__":
