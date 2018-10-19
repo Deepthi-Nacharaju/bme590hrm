@@ -7,6 +7,9 @@ import sys
 import scipy
 import json
 import logging
+from openpyxl import Workbook
+from openpyxl import load_workbook
+from openpyxl.styles import PatternFill
 
 def plot_data(data, index, file):
     """
@@ -190,7 +193,8 @@ def main():
     new_path = os.getcwd() + '/data'
     os.chdir(new_path)
     headers = ['time', 'voltage']
-
+    export_excel = list()
+    file_number = list()
     for file in os.listdir(os.getcwd()):
         print(file)
         try:
@@ -204,12 +208,36 @@ def main():
                 found = find_peaks_two(dx, dy, data)
                 bpm = calc_avg(interval, found, dur)
                 metrics = create_metrics(found, extreme, dur, bpm)
-                plot_derivative(dx, dy, found, file)
-                plot_data(data, found['index'], file)
+                #plot_derivative(dx, dy, found, file)
+                #plot_data(data, found['index'], file)
                 write_json(file, metrics)
+                export_excel.append(metrics['num_beats'])
+                numb = file.split('.')[0]
+                numb = numb.split('data')[1]
+                file_number.append(numb)
         except IndexError:
             print('Ignore Folder')
 
+    wb = load_workbook('Beat_Tracking.xlsx')
+    ws = wb.active
+    counter = 0
+    yellowFill = PatternFill(start_color='FFFFFF00',
+                          end_color='FFFFFF00',
+                          fill_type='solid')
+    whiteFill = PatternFill(start_color='FFFFFFFF',
+                          end_color='FFFFFFFF',
+                          fill_type='solid')
+    for x in file_number:
+        ws['C' + str(int(x) + 1)] = str(export_excel[counter])
+        counter += 1
+        if int(ws['C'+ str(int(x) + 1)].value) != int(ws['B' + str(int(x) + 1)].value):
+            print(ws['C'+ str(int(x) + 1)].value)
+            print(ws['B' + str(int(x) + 1)].value)
+            ws['C' + str(int(x) + 1)].fill = yellowFill
+        else:
+            ws['C' + str(int(x) + 1)].fill = whiteFill
 
+    print(ws['C3'].value)
+    wb.save('Beat_Tracking.xlsx')
 if __name__ == "__main__":
     main()
