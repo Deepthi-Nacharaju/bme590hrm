@@ -201,11 +201,11 @@ def write_json(file, metrics):
 
     logging.info('make sure everything in metrics is a dictionary and NOT a dataframe')
 
-def Hilbert(data):
+def Hilbert(data, cutoff):
     analytic_signal = hilbert(data['voltage'])
     amplitude_envelope = np.abs(analytic_signal)
     N = 2  # Filter order
-    Wn = 0.008  # Cutoff frequency
+    Wn = cutoff  # Cutoff frequency
     B, A = signal.butter(N, Wn, output='ba')
     filtered = signal.filtfilt(B, A, amplitude_envelope)
     #filtered = signal.filtfilt(B, A, filtered)
@@ -214,19 +214,33 @@ def Hilbert(data):
 def edge_case(data):
     extra = []
     headers = ['time', 'voltage']
-    dt = data.loc[50]['time']-data.loc[49]['time']
+    try:
+        dt = data.loc[50]['time']-data.loc[49]['time']
+    except TypeError:
+        dt = float(data.loc[50]['time']) - float(data.loc[49]['time'])
     for x in range(0,200):
-        extra.append([dt*x+data.loc[len(data['time'])-1]['time'], -0.25])
+        extra.append([dt*x+float(data.loc[len(data['time'])-1]['time']), -0.25])
     extra = pd.DataFrame(extra, columns=headers)
     data = data.append(extra)
     data = data.reset_index()
     extra2 = []
     for x in range(0, 200):
-        extra2.append([data.loc[0]['time'] - dt*200+ dt * x, -0.25])
+        extra2.append([float(data.loc[0]['time']) - dt*200 + dt * x, -0.25])
     extra2 = pd.DataFrame(extra2, columns=headers)
     data = extra2.append(data)
     data = data.reset_index()
     return data
+
+def check_spacing(found):
+    difference = []
+    old_x = 0
+    for x in found['index']:
+        difference.append(x-old_x)
+        old_x = x
+    if max(difference)-min(difference) > .5:
+        return True
+    else:
+        return False
 
 def main():
     """
@@ -248,15 +262,34 @@ def main():
                 extreme = calc_v_extreme(data)
                 dur = calc_duration(data)
                 interval = user_input(dur)
-                dx = data.loc[3]['time'] - data.loc[2]['time']
+                try:
+                    dx = data.loc[3]['time'] - data.loc[2]['time']
+                except TypeError:
+                    dx = float(data.loc[3]['time']) - float(data.loc[2]['time'])
                 data = edge_case(data)
-                filtered = Hilbert(data)
+                filter_value = 0.008
+                filtered = Hilbert(data, filter_value)
                 dy = find_peaks(data, filtered, dx)
                 dx = data.drop([0, 0])
                 found = find_peaks_two(dx, filtered, data)
+                check = check_spacing(found)
+                counter = 0
+                while check:
+                    filter_value += 0.008
+                    filtered = Hilbert(data, filter_value)
+                    plt.plot(data['time'],data['voltage'])
+                    plt.plot(data['time'],filtered)
+                    plt.show()
+                    #dy = find_peaks(data, filtered, dx)
+                    dx = data.drop([0, 0])
+                    found = find_peaks_two(dx, filtered, data)
+                    check = check_spacing(found)
+                    if counter == 4:
+                        check = False
+                    counter += 1
                 bpm = calc_avg(interval, found, dur)
                 metrics = create_metrics(found, extreme, dur, bpm)
-                plot_derivative(dx, dy, found, file)
+                #plot_derivative(dx, dy, found, file)
                 plot_data(data, filtered, found['index'], file)
                 write_json(file, metrics)
                 export_excel.append(metrics['num_beats'])
@@ -275,11 +308,22 @@ def main():
     whiteFill = PatternFill(start_color='FFFFFFFF',
                           end_color='FFFFFFFF',
                           fill_type='solid')
+    orangeFill = PatternFill(start_color='FFFF8C00',
+                          end_color='FFFF8C00',
+                          fill_type='solid')
+
+    redFill =  PatternFill(start_color='FFFF0000',
+                          end_color='FFFF0000',
+                          fill_type='solid')
     for x in file_number:
         ws['C' + str(int(x) + 1)] = str(export_excel[counter])
         counter += 1
         try:
-            if int(ws['C'+ str(int(x) + 1)].value) != int(ws['B' + str(int(x) + 1)].value):
+            if np.abs(int(ws['C'+ str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value))>5:
+                ws['C' + str(int(x) + 1)].fill = redFill
+            elif np.abs(int(ws['C' + str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) >2:
+                ws['C' + str(int(x) + 1)].fill = orangeFill
+            elif np.abs(int(ws['C'+ str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value))>0:
                 ws['C' + str(int(x) + 1)].fill = yellowFill
             else:
                 ws['C' + str(int(x) + 1)].fill = whiteFill
