@@ -118,9 +118,9 @@ def find_peaks_two(dx, dy, data):
     switch = False
     go = False
     avg = sum(dy)/len(dy)
-    avg = (dy.max()-dy.min())*.3+dy.min()
+    avg = (dy.max()-dy.min())*.25+dy.min()
     for index, y in enumerate(dy):
-        if y - y_old > 0:
+        if y - y_old > 0 and data.loc[index]['time'] > 0:
             go = True
         if y - y_old <= 0 and y > avg and index -index_old > 5 and switch == False and go == True:
             if index_old == -999 or go == True: #data.loc[index]['time']-data.loc[index_old]['time'] > 0.001:
@@ -215,10 +215,18 @@ def edge_case(data):
     extra = []
     headers = ['time', 'voltage']
     dt = data.loc[50]['time']-data.loc[49]['time']
-    for x in range(0,100):
+    for x in range(0,200):
         extra.append([dt*x+data.loc[len(data['time'])-1]['time'], -0.25])
     extra = pd.DataFrame(extra, columns=headers)
-    return data.append(extra)
+    data = data.append(extra)
+    data = data.reset_index()
+    extra2 = []
+    for x in range(0, 200):
+        extra2.append([data.loc[0]['time'] - dt*200+ dt * x, -0.25])
+    extra2 = pd.DataFrame(extra2, columns=headers)
+    data = extra2.append(data)
+    data = data.reset_index()
+    return data
 
 def main():
     """
@@ -241,8 +249,7 @@ def main():
                 dur = calc_duration(data)
                 interval = user_input(dur)
                 dx = data.loc[3]['time'] - data.loc[2]['time']
-                #data = edge_case(data)
-                data = pd.DataFrame(data, columns=headers)
+                data = edge_case(data)
                 filtered = Hilbert(data)
                 dy = find_peaks(data, filtered, dx)
                 dx = data.drop([0, 0])
