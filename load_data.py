@@ -297,6 +297,14 @@ def is_data_valid(data):
     return data
 
 def check_loop(found, data, filter_value, file):
+    """
+
+    :param found: dataframe containing indices, time, and voltage of peaks
+    :param data: loaded padded data
+    :param filter_value: low pass filter value
+    :param file: file name
+    :return: updated found file after checking suspicions
+    """
     if not found.empty:
         check = check_spacing(found, data)
         counter = 0
@@ -317,50 +325,7 @@ def check_loop(found, data, filter_value, file):
 
     return found
 
-def main():
-    """
-
-    :return: saved json file of dictionary metrics that holds all requested values
-    """
-    plt.close('all')
-    path = os.getcwd()
-    new_path = os.getcwd() + '/data'
-    os.chdir(new_path)
-    headers = ['time', 'voltage']
-    export_excel = list()
-    file_number = list()
-    for file in os.listdir(os.getcwd()):
-        print(file)
-        try:
-            if file.split('.')[1] == 'csv':
-                data = pd.read_csv(file, names=headers)
-                extreme = calc_v_extreme(data)
-                dur = calc_duration(data)
-                interval = user_input(dur)
-                data = is_data_valid(data)
-                try:
-                    dx = data.loc[3]['time'] - data.loc[2]['time']
-                except TypeError:
-                    dx = float(data.loc[3]['time']) - float(data.loc[2]['time'])
-                data = edge_case(data)
-                filter_value = 0.008
-                filtered = Hilbert(data, filter_value)
-                dy = find_peaks(data, filtered, dx)
-                dx = data.drop([0, 0])
-                found = find_peaks_two(dx, filtered, data)
-                found = check_loop(found, data, filter_value, file)
-                bpm = calc_avg(interval, found, dur)
-                metrics = create_metrics(found, extreme, dur, bpm)
-                plot_derivative(dx, dy, found, file)
-                plot_data(data, filtered, found['index'], file)
-                write_json(file, metrics)
-                export_excel.append(metrics['num_beats'])
-                numb = file.split('.')[0]
-                numb = numb.split('data')[1]
-                file_number.append(numb)
-        except IndexError:
-            print('Ignore Folder')
-
+def write_excel(file_number, export_excel):
     wb = load_workbook('Beat_Tracking.xlsx')
     ws = wb.active
     counter = 0
@@ -398,6 +363,52 @@ def main():
             print('File ' + str(x) + ' has not been tracked')
             ws['C' + str(int(x) + 1)].fill = whiteFill
     wb.save('Beat_Tracking.xlsx')
+
+def main():
+    """
+
+    :return: saved json file of dictionary metrics that holds all requested values
+    """
+    plt.close('all')
+    new_path = os.getcwd() + '/data'
+    os.chdir(new_path)
+    headers = ['time', 'voltage']
+    export_excel = list()
+    file_number = list()
+    for file in os.listdir(os.getcwd()):
+        print(file)
+        try:
+            if file.split('.')[1] == 'csv':
+                data = pd.read_csv(file, names=headers)
+                extreme = calc_v_extreme(data)
+                dur = calc_duration(data)
+                interval = user_input(dur)
+                data = is_data_valid(data)
+                try:
+                    dx = data.loc[3]['time'] - data.loc[2]['time']
+                except TypeError:
+                    dx = float(data.loc[3]['time']) - float(data.loc[2]['time'])
+                data = edge_case(data)
+                filter_value = 0.008
+                filtered = Hilbert(data, filter_value)
+                dy = find_peaks(data, filtered, dx)
+                dx = data.drop([0, 0])
+                found = find_peaks_two(dx, filtered, data)
+                found = check_loop(found, data, filter_value, file)
+                bpm = calc_avg(interval, found, dur)
+                metrics = create_metrics(found, extreme, dur, bpm)
+                plot_derivative(dx, dy, found, file)
+                plot_data(data, filtered, found['index'], file)
+                write_json(file, metrics)
+                export_excel.append(metrics['num_beats'])
+                numb = file.split('.')[0]
+                numb = numb.split('data')[1]
+                file_number.append(numb)
+        except IndexError:
+            print('Ignore Folder')
+
+    write_excel(file_number, export_excel)
+
 
 if __name__ == "__main__":
     main()
