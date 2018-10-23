@@ -213,6 +213,7 @@ def write_json(file, metrics):
 
     logging.info('make sure everything in metrics is a dictionary and NOT a dataframe')
 
+
 def Hilbert(data, cutoff):
     """
 
@@ -228,6 +229,7 @@ def Hilbert(data, cutoff):
     filtered = signal.filtfilt(B, A, amplitude_envelope)
     #filtered = signal.filtfilt(B, A, filtered)
     return filtered
+
 
 def edge_case(data):
     """
@@ -254,6 +256,7 @@ def edge_case(data):
     data = data.reset_index()
     return data
 
+
 def check_spacing(found,data):
     """
 
@@ -270,6 +273,7 @@ def check_spacing(found,data):
         return True
     else:
         return False
+
 
 def is_data_valid(data):
     """
@@ -295,6 +299,7 @@ def is_data_valid(data):
             data.drop(index_)
             dropped += 1
     return data
+
 
 def check_loop(found, data, filter_value, file):
     """
@@ -324,6 +329,7 @@ def check_loop(found, data, filter_value, file):
             counter += 1
 
     return found
+
 
 def write_excel(file_number, export_excel):
     wb = load_workbook('Beat_Tracking.xlsx')
