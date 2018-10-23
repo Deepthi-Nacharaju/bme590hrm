@@ -12,6 +12,7 @@ import logging
 from openpyxl import Workbook
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
+import math
 
 def plot_data(data, filtered, index, file):
     """
@@ -85,6 +86,7 @@ def calc_v_extreme(data):
 def find_peaks(data, filtered, dx):
     """
 
+    :param dx: time step size
     :param filtered: Hilbert Filtered data
     :param data: dataframe from reading csv
     :return: differentiated voltage array
@@ -103,7 +105,7 @@ def find_peaks(data, filtered, dx):
 def find_peaks_two(dx, dy, data):
     """
 
-    :param data: original data frame
+    :param data: imported data frame with padding
     :param dx: time dataframe adjusted for derivative array size change
     :param dy: differentiated voltage array
     :return: data frame containing indices, time, and voltage where peak occurs
@@ -151,6 +153,9 @@ def user_input(duration):
         print('No Time Window Indicated. Default = ' + str(interval))
         out = list([interval, False])
     logging.debug('What type of error does this cause? --> IndexError')
+    if interval > duration:
+        print('User Input Exceeds Data Duration. Default = ' + str(duration))
+        out = list([duration, False])
     return out
 
 
@@ -261,10 +266,35 @@ def check_spacing(found,data):
     for x in found['index']:
         difference.append(data.loc[x]['time']-data.loc[old_x]['time'])
         old_x = x
-    if max(difference)- sum(difference)/len(difference) > 1:
+    if max(difference) - sum(difference)/len(difference) > 1:
         return True
     else:
         return False
+
+def is_data_valid(data):
+    """
+
+    :param data: input raw data
+    :return: data frame that removed all blank spaces or NaN
+    """
+    dropped = 0
+    for index_, y in enumerate(data['time']):
+        try:
+            y = float(y)
+        except ValueError:
+            print(data.loc[index_]['time'])
+            data.drop(index_)
+            dropped += 1
+            print(y)
+    for index_, y in enumerate(data['voltage']):
+        try:
+            y = float(y)
+        except ValueError:
+            print(data.loc[index_]['voltage'])
+            print(y)
+            data.drop(index_)
+            dropped += 1
+    return data
 
 def main():
     """
@@ -286,6 +316,7 @@ def main():
                 extreme = calc_v_extreme(data)
                 dur = calc_duration(data)
                 interval = user_input(dur)
+                data = is_data_valid(data)
                 try:
                     dx = data.loc[3]['time'] - data.loc[2]['time']
                 except TypeError:
@@ -296,22 +327,23 @@ def main():
                 dy = find_peaks(data, filtered, dx)
                 dx = data.drop([0, 0])
                 found = find_peaks_two(dx, filtered, data)
-                check = check_spacing(found, data)
-                counter = 0
-                while check:
-                    filter_value += 0.002
-                    filtered = Hilbert(data, filter_value)
-                    plt.plot(data['time'],data['voltage'])
-                    plt.plot(data['time'],filtered)
-                    plt.title(str(file) + ' ' + str(counter))
-                    plt.show()
-                    #dy = find_peaks(data, filtered, dx)
-                    dx = data.drop([0, 0])
-                    found = find_peaks_two(dx, filtered, data)
+                if not found.empty:
                     check = check_spacing(found, data)
-                    if counter == 3:
-                        check = False
-                    counter += 1
+                    counter = 0
+                    while check:
+                        filter_value += 0.002
+                        filtered = Hilbert(data, filter_value)
+                        plt.plot(data['time'],data['voltage'])
+                        plt.plot(data['time'],filtered)
+                        plt.title(str(file) + ' ' + str(counter))
+                        plt.show()
+                        #dy = find_peaks(data, filtered, dx)
+                        dx = data.drop([0, 0])
+                        found = find_peaks_two(dx, filtered, data)
+                        check = check_spacing(found, data)
+                        if counter == 3:
+                            check = False
+                        counter += 1
                 bpm = calc_avg(interval, found, dur)
                 metrics = create_metrics(found, extreme, dur, bpm)
                 plot_derivative(dx, dy, found, file)
