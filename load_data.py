@@ -117,12 +117,11 @@ def find_peaks_two(dx, dy, data):
     indices = []
     switch = False
     go = False
-    avg = sum(dy)/len(dy)
     avg = (dy.max()-dy.min())*.25+dy.min()
     for index, y in enumerate(dy):
         if y - y_old > 0 and data.loc[index]['time'] > 0:
             go = True
-        if y - y_old <= 0 and y > avg and index -index_old > 5 and switch == False and go == True:
+        if y - y_old <= 0 and index -index_old > 5 and switch == False and go == True:
             if index_old == -999 or go == True: #data.loc[index]['time']-data.loc[index_old]['time'] > 0.001:
                 return_values.append([index, dx.loc[index]['time'], y])
                 indices.append(index)
@@ -139,6 +138,7 @@ def find_peaks_two(dx, dy, data):
 def user_input(duration):
     """
 
+    :param duration: the time length of the data file for use as default
     :return: user chosen input for time window over which to average
     """
     try:
@@ -155,6 +155,13 @@ def user_input(duration):
 
 
 def calc_avg(interval, found, dur):
+    """
+
+    :param interval: time length of data file
+    :param found: dataframe holding indices, time and voltage measurements of detected peaks
+    :param dur: calculated duration from calc_duration function
+    :return: calculated bpm measurement
+    """
     if not interval[1]:
         bpm = int(float(len(found['time']))/dur*60)
     else:
@@ -202,6 +209,12 @@ def write_json(file, metrics):
     logging.info('make sure everything in metrics is a dictionary and NOT a dataframe')
 
 def Hilbert(data, cutoff):
+    """
+
+    :param data: padded data
+    :param cutoff: cutoff frequency for low pass filter
+    :return: enveloped with low pass filter data
+    """
     analytic_signal = hilbert(data['voltage'])
     amplitude_envelope = np.abs(analytic_signal)
     N = 2  # Filter order
@@ -212,6 +225,11 @@ def Hilbert(data, cutoff):
     return filtered
 
 def edge_case(data):
+    """
+
+    :param data: read in data file
+    :return: data file padded with -.25
+    """
     extra = []
     headers = ['time', 'voltage']
     try:
@@ -231,13 +249,19 @@ def edge_case(data):
     data = data.reset_index()
     return data
 
-def check_spacing(found):
+def check_spacing(found,data):
+    """
+
+    :param found: dataframe holding indices, time, and voltage of detected peaks
+    :param data: padded data
+    :return: boolean indicating if spacing of detected peaks is inconsistent and suspicious
+    """
     difference = []
     old_x = 0
     for x in found['index']:
-        difference.append(x-old_x)
+        difference.append(data.loc[x]['time']-data.loc[old_x]['time'])
         old_x = x
-    if max(difference)-min(difference) > .5:
+    if max(difference)- sum(difference)/len(difference) > 1:
         return True
     else:
         return False
@@ -272,24 +296,25 @@ def main():
                 dy = find_peaks(data, filtered, dx)
                 dx = data.drop([0, 0])
                 found = find_peaks_two(dx, filtered, data)
-                check = check_spacing(found)
+                check = check_spacing(found, data)
                 counter = 0
                 while check:
-                    filter_value += 0.008
+                    filter_value += 0.002
                     filtered = Hilbert(data, filter_value)
                     plt.plot(data['time'],data['voltage'])
                     plt.plot(data['time'],filtered)
+                    plt.title(str(file) + ' ' + str(counter))
                     plt.show()
                     #dy = find_peaks(data, filtered, dx)
                     dx = data.drop([0, 0])
                     found = find_peaks_two(dx, filtered, data)
-                    check = check_spacing(found)
-                    if counter == 4:
+                    check = check_spacing(found, data)
+                    if counter == 3:
                         check = False
                     counter += 1
                 bpm = calc_avg(interval, found, dur)
                 metrics = create_metrics(found, extreme, dur, bpm)
-                #plot_derivative(dx, dy, found, file)
+                plot_derivative(dx, dy, found, file)
                 plot_data(data, filtered, found['index'], file)
                 write_json(file, metrics)
                 export_excel.append(metrics['num_beats'])
@@ -315,6 +340,9 @@ def main():
     redFill =  PatternFill(start_color='FFFF0000',
                           end_color='FFFF0000',
                           fill_type='solid')
+    greenFill =  PatternFill(start_color='FF00FF00',
+                          end_color='FF00FF00',
+                          fill_type='solid')
     for x in file_number:
         ws['C' + str(int(x) + 1)] = str(export_excel[counter])
         counter += 1
@@ -325,10 +353,13 @@ def main():
                 ws['C' + str(int(x) + 1)].fill = orangeFill
             elif np.abs(int(ws['C'+ str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value))>0:
                 ws['C' + str(int(x) + 1)].fill = yellowFill
+            elif np.abs(int(ws['C' + str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) == 0:
+                ws['C' + str(int(x) + 1)].fill = greenFill
             else:
                 ws['C' + str(int(x) + 1)].fill = whiteFill
         except TypeError:
             print('File ' + str(x) + ' has not been tracked')
+            ws['C' + str(int(x) + 1)].fill = whiteFill
     wb.save('Beat_Tracking.xlsx')
 
 if __name__ == "__main__":
