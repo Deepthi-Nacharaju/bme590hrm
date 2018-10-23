@@ -296,6 +296,27 @@ def is_data_valid(data):
             dropped += 1
     return data
 
+def check_loop(found, data, filter_value, file):
+    if not found.empty:
+        check = check_spacing(found, data)
+        counter = 0
+        while check:
+            filter_value += 0.002
+            filtered = Hilbert(data, filter_value)
+            plt.plot(data['time'], data['voltage'])
+            plt.plot(data['time'], filtered)
+            plt.title(str(file) + ' ' + str(counter))
+            plt.show()
+            # dy = find_peaks(data, filtered, dx)
+            dx = data.drop([0, 0])
+            found = find_peaks_two(dx, filtered, data)
+            check = check_spacing(found, data)
+            if counter == 3:
+                check = False
+            counter += 1
+
+    return found
+
 def main():
     """
 
@@ -327,23 +348,7 @@ def main():
                 dy = find_peaks(data, filtered, dx)
                 dx = data.drop([0, 0])
                 found = find_peaks_two(dx, filtered, data)
-                if not found.empty:
-                    check = check_spacing(found, data)
-                    counter = 0
-                    while check:
-                        filter_value += 0.002
-                        filtered = Hilbert(data, filter_value)
-                        plt.plot(data['time'],data['voltage'])
-                        plt.plot(data['time'],filtered)
-                        plt.title(str(file) + ' ' + str(counter))
-                        plt.show()
-                        #dy = find_peaks(data, filtered, dx)
-                        dx = data.drop([0, 0])
-                        found = find_peaks_two(dx, filtered, data)
-                        check = check_spacing(found, data)
-                        if counter == 3:
-                            check = False
-                        counter += 1
+                found = check_loop(found, data, filter_value, file)
                 bpm = calc_avg(interval, found, dur)
                 metrics = create_metrics(found, extreme, dur, bpm)
                 plot_derivative(dx, dy, found, file)
