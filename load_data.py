@@ -121,7 +121,7 @@ def find_peaks_two(dx, dy, data):
     go = False
     avg = (dy.max()-dy.min())*.25+dy.min()
     for index, y in enumerate(dy):
-        if y - y_old > 0 and data.loc[index]['time'] > 0:
+        if y - y_old > 0 and float(data.loc[index]['time']) > 0:
             go = True
         if y - y_old <= 0 and index -index_old > 5 and switch == False and go == True:
             if index_old == -999 or go == True: #data.loc[index]['time']-data.loc[index_old]['time'] > 0.001:
@@ -278,25 +278,25 @@ def check_spacing(found,data):
 def is_data_valid(data):
     """
 
-    :param data: input raw data
+    :param data: input raw dataframe with time column
     :return: data frame that removed all blank spaces or NaN
     """
     dropped = 0
     for index_, y in enumerate(data['time']):
         try:
-            y = float(y)
+            data['time'][index_] = float(y)
         except ValueError:
             print(data.loc[index_]['time'])
-            data.drop(index_)
+            data = data.drop(data.index[index_])
             dropped += 1
             print(y)
     for index_, y in enumerate(data['voltage']):
         try:
-            y = float(y)
+            data['voltage'][index_] = float(y)
         except ValueError:
             print(data.loc[index_]['voltage'])
             print(y)
-            data.drop(index_)
+            data = data.drop(data.index[index_])
             dropped += 1
     return data
 
