@@ -121,7 +121,7 @@ def find_peaks_two(dx, dy, data):
     go = False
     avg = (dy.max()-dy.min())*.25+dy.min()
     for index, y in enumerate(dy):
-        if y - y_old > 0 and data.loc[index]['time'] > 0:
+        if y - y_old > 0 and float(data.loc[index]['time']) > 0:
             go = True
         if y - y_old <= 0 and index -index_old > 5 and switch == False and go == True:
             if index_old == -999 or go == True: #data.loc[index]['time']-data.loc[index_old]['time'] > 0.001:
@@ -213,6 +213,7 @@ def write_json(file, metrics):
 
     logging.info('make sure everything in metrics is a dictionary and NOT a dataframe')
 
+
 def Hilbert(data, cutoff):
     """
 
@@ -228,6 +229,7 @@ def Hilbert(data, cutoff):
     filtered = signal.filtfilt(B, A, amplitude_envelope)
     #filtered = signal.filtfilt(B, A, filtered)
     return filtered
+
 
 def edge_case(data):
     """
@@ -254,6 +256,7 @@ def edge_case(data):
     data = data.reset_index()
     return data
 
+
 def check_spacing(found,data):
     """
 
@@ -271,30 +274,32 @@ def check_spacing(found,data):
     else:
         return False
 
+
 def is_data_valid(data):
     """
 
-    :param data: input raw data
+    :param data: input raw dataframe with time column
     :return: data frame that removed all blank spaces or NaN
     """
     dropped = 0
     for index_, y in enumerate(data['time']):
         try:
-            y = float(y)
+            data['time'][index_] = float(y)
         except ValueError:
-            print(data.loc[index_]['time'])
-            data.drop(index_)
+            #print(data.loc[index_]['time'])
+            data = data.drop(data.index[index_])
             dropped += 1
-            print(y)
+            #print(y)
     for index_, y in enumerate(data['voltage']):
         try:
-            y = float(y)
+            data['voltage'][index_] = float(y)
         except ValueError:
-            print(data.loc[index_]['voltage'])
-            print(y)
-            data.drop(index_)
+            #print(data.loc[index_]['voltage'])
+            #print(y)
+            data = data.drop(data.index[index_])
             dropped += 1
     return data
+
 
 def check_loop(found, data, filter_value, file):
     """
@@ -325,6 +330,7 @@ def check_loop(found, data, filter_value, file):
 
     return found
 
+
 def write_excel(file_number, export_excel):
     wb = load_workbook('Beat_Tracking.xlsx')
     ws = wb.active
@@ -345,15 +351,21 @@ def write_excel(file_number, export_excel):
     greenFill =  PatternFill(start_color='FF00FF00',
                           end_color='FF00FF00',
                           fill_type='solid')
+    greyFill =  PatternFill(start_color='FFC0C0C0',
+                          end_color='FFC0C0C0',
+                          fill_type='solid')
     for x in file_number:
         ws['C' + str(int(x) + 1)] = str(export_excel[counter])
         counter += 1
         try:
-            if np.abs(int(ws['C'+ str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value))>5:
+            if np.abs(int(ws['C'+ str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) > 10:
+                ws['C' + str(int(x) + 1)].fill = greyFill
+                ws['C' + str(int(x) + 1)] = str('Bad Data')
+            elif np.abs(int(ws['C'+ str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) > 5:
                 ws['C' + str(int(x) + 1)].fill = redFill
-            elif np.abs(int(ws['C' + str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) >2:
+            elif np.abs(int(ws['C' + str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) > 2:
                 ws['C' + str(int(x) + 1)].fill = orangeFill
-            elif np.abs(int(ws['C'+ str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value))>0:
+            elif np.abs(int(ws['C'+ str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) > 0:
                 ws['C' + str(int(x) + 1)].fill = yellowFill
             elif np.abs(int(ws['C' + str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) == 0:
                 ws['C' + str(int(x) + 1)].fill = greenFill
@@ -389,7 +401,7 @@ def main():
                 except TypeError:
                     dx = float(data.loc[3]['time']) - float(data.loc[2]['time'])
                 data = edge_case(data)
-                filter_value = 0.008
+                filter_value = 0.005
                 filtered = Hilbert(data, filter_value)
                 dy = find_peaks(data, filtered, dx)
                 dx = data.drop([0, 0])
@@ -397,8 +409,8 @@ def main():
                 found = check_loop(found, data, filter_value, file)
                 bpm = calc_avg(interval, found, dur)
                 metrics = create_metrics(found, extreme, dur, bpm)
-                plot_derivative(dx, dy, found, file)
-                plot_data(data, filtered, found['index'], file)
+                #plot_derivative(dx, dy, found, file)
+                #plot_data(data, filtered, found['index'], file)
                 write_json(file, metrics)
                 export_excel.append(metrics['num_beats'])
                 numb = file.split('.')[0]
