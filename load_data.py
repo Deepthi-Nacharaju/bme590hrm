@@ -395,7 +395,7 @@ def main():
                 except TypeError:
                     dx = float(data.loc[3]['time']) - float(data.loc[2]['time'])
                 data = edge_case(data)
-                filter_value = 0.008
+                filter_value = 0.007
                 filtered = Hilbert(data, filter_value)
                 dy = find_peaks(data, filtered, dx)
                 dx = data.drop([0, 0])
