@@ -41,12 +41,24 @@ def test_user_input(file, dur, expected):
 
 
 @pytest.mark.parametrize("file, expected",[
-    ('sine.csv', 3),
+    ('sine.csv', True),
 ])
 def test_is_data_valid(file, expected):
     headers = ['time', 'voltage']
     data = pd.read_csv(file, names=headers)
-    assert expected == expected
+    data = is_data_valid(data)
+    switch = True
+    for x in data['time']:
+        y = float(x)
+        if x != y:
+            switch = False
+    for x in data['voltage']:
+        y = float(x)
+        if x != y:
+            switch = False
+    assert expected == switch
+
+
 #def test_plot_data(expected = 5):
     # headers = ['time', 'voltage']
     # data = pd.read_csv('sine.csv', names=headers)
