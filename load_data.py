@@ -286,16 +286,16 @@ def is_data_valid(data):
         try:
             data['time'][index_] = float(y)
         except ValueError:
-            print(data.loc[index_]['time'])
+            #print(data.loc[index_]['time'])
             data = data.drop(data.index[index_])
             dropped += 1
-            print(y)
+            #print(y)
     for index_, y in enumerate(data['voltage']):
         try:
             data['voltage'][index_] = float(y)
         except ValueError:
-            print(data.loc[index_]['voltage'])
-            print(y)
+            #print(data.loc[index_]['voltage'])
+            #print(y)
             data = data.drop(data.index[index_])
             dropped += 1
     return data
@@ -351,15 +351,21 @@ def write_excel(file_number, export_excel):
     greenFill =  PatternFill(start_color='FF00FF00',
                           end_color='FF00FF00',
                           fill_type='solid')
+    greyFill =  PatternFill(start_color='FFC0C0C0',
+                          end_color='FFC0C0C0',
+                          fill_type='solid')
     for x in file_number:
         ws['C' + str(int(x) + 1)] = str(export_excel[counter])
         counter += 1
         try:
-            if np.abs(int(ws['C'+ str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value))>5:
+            if np.abs(int(ws['C'+ str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) > 10:
+                ws['C' + str(int(x) + 1)].fill = greyFill
+                ws['C' + str(int(x) + 1)] = str('Bad Data')
+            elif np.abs(int(ws['C'+ str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) > 5:
                 ws['C' + str(int(x) + 1)].fill = redFill
-            elif np.abs(int(ws['C' + str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) >2:
+            elif np.abs(int(ws['C' + str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) > 2:
                 ws['C' + str(int(x) + 1)].fill = orangeFill
-            elif np.abs(int(ws['C'+ str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value))>0:
+            elif np.abs(int(ws['C'+ str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) > 0:
                 ws['C' + str(int(x) + 1)].fill = yellowFill
             elif np.abs(int(ws['C' + str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) == 0:
                 ws['C' + str(int(x) + 1)].fill = greenFill
@@ -395,7 +401,7 @@ def main():
                 except TypeError:
                     dx = float(data.loc[3]['time']) - float(data.loc[2]['time'])
                 data = edge_case(data)
-                filter_value = 0.007
+                filter_value = 0.005
                 filtered = Hilbert(data, filter_value)
                 dy = find_peaks(data, filtered, dx)
                 dx = data.drop([0, 0])
@@ -403,8 +409,8 @@ def main():
                 found = check_loop(found, data, filter_value, file)
                 bpm = calc_avg(interval, found, dur)
                 metrics = create_metrics(found, extreme, dur, bpm)
-                plot_derivative(dx, dy, found, file)
-                plot_data(data, filtered, found['index'], file)
+                #plot_derivative(dx, dy, found, file)
+                #plot_data(data, filtered, found['index'], file)
                 write_json(file, metrics)
                 export_excel.append(metrics['num_beats'])
                 numb = file.split('.')[0]
