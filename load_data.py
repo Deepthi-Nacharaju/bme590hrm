@@ -2,10 +2,9 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy import diff
 import sys
 import scipy.signal as signal
-from scipy.signal import hilbert, chirp
+from scipy.signal import hilbert
 import json
 import logging
 from openpyxl import load_workbook
@@ -115,29 +114,43 @@ def peak_detector(dx, dy, data):
     return return_df
 
 
-def user_input(duration):
+def user_input(duration, window=None):
     """
 
+    User Input for choosing window over which to take average
     Args:
+        window: Optional input to determine window from within
+                load_data.py
         duration: time duration of original data file
 
     Returns:
         out: user identified duration possibly by default
     """
-    try:
-        interval_one = sys.argv[1]
-        interval_two = sys.argv[2]
-        interval = list([float(interval_one), float(interval_two)])
-        out = list([interval, True])
-    except IndexError:
-        interval = duration
-        print('No Time Window Indicated. Default = ' + str(interval))
-        out = list([interval, False])
-    logging.debug('What type of error does this cause? --> IndexError')
-    if interval > duration:
-        print('User Input Exceeds Data Duration. Default = ' + str(duration))
-        out = list([duration, False])
-    return out
+    if not window:
+        try:
+            interval_one = sys.argv[1]
+            interval_two = sys.argv[2]
+            interval = list([float(interval_one), float(interval_two)])
+            out = list([interval, True])
+        except IndexError:
+            interval = duration
+            print('No Time Window Indicated. Default = ' + str(interval))
+            out = list([interval, False])
+        logging.debug('What type of error does this cause? --> IndexError')
+        if interval > duration:
+            print('User Input Exceeds Data Duration. Default = ' + str(duration))
+            out = list([duration, False])
+        return out
+    else:
+        try:
+            interval_one = window[0]
+            interval_two = window[1]
+            interval = list([float(interval_one), float(interval_two)])
+            out = list([interval, True])
+        except TypeError:
+            print('User input for window must be a tuple with two numbers')
+            print('Default = ' + str(interval))
+            out = list([interval, False])
 
 
 def calc_avg(interval, found, dur):
@@ -305,10 +318,11 @@ def is_data_valid(data):
     return data
 
 
-def check_loop(found, data, filter_value, file):
+def check_loop(found, data, filter_value, file, space):
     """
 
     Args:
+        space: ensuring this distance between peaks
         found: data frame containing index, time,
         and voltage of found peaks
         data: data that has been padded
@@ -320,7 +334,7 @@ def check_loop(found, data, filter_value, file):
         time, and voltage of found peaks
     """
     if not found.empty:
-        check = check_spacing(found, data)
+        check = check_spacing(found, data, space)
         counter = 0
         while check:
             filter_value += 0.002
@@ -401,6 +415,7 @@ def main():
     headers = ['time', 'voltage']
     export_excel = list()
     file_number = list()
+    space = 1
     for file in os.listdir(os.getcwd()):
         print(file)
         try:
@@ -408,7 +423,7 @@ def main():
                 data = pd.read_csv(file, names=headers)
                 extreme = calc_v_extreme(data)
                 dur = calc_duration(data)
-                interval = user_input(dur)
+                interval = user_input(dur, (5, 7))
                 data = is_data_valid(data)
                 try:
                     dx = data.loc[3]['time'] - data.loc[2]['time']
@@ -420,7 +435,7 @@ def main():
                 filtered = Hilbert(data, filter_value)
                 dx = data.drop([0, 0])
                 found = peak_detector(dx, filtered, data)
-                found = check_loop(found, data, filter_value, file)
+                found = check_loop(found, data, filter_value, file, space)
                 bpm = calc_avg(interval, found, dur)
                 metrics = create_metrics(found, extreme, dur, bpm)
                 # plot_data(data, filtered, found['index'], file)
