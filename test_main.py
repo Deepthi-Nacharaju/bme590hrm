@@ -73,7 +73,7 @@ def test_is_data_valid(file, expected):
 def test_edge_case(file, expected):
     headers = ['time', 'voltage']
     data = pd.read_csv(file, names=headers)
-    out = edge_case(data)
+    out = edge_case(data, 200, -0.25)
     tup = (out.loc[0]['voltage'], out.loc[len(out)-1]['voltage'])
     assert expected == tup
 
