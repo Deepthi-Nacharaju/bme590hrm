@@ -58,7 +58,7 @@ def calc_duration(data):
     except TypeError:
         dur = float(data.loc[data.index[-1]]['time']) - \
               float(data.loc[1]['time'])
-        logging.warning('input data point was not a float')
+        logging.warning('Data type was not a float')
     return dur
 
 
