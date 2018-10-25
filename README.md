@@ -1,7 +1,7 @@
-# bme590hrm
-**Heart Rate Monitor Assignment**
+## bme590hrm
+####**Heart Rate Monitor Assignment**
 
-*Deepthi Nacharaju*
+#####*Deepthi Nacharaju*
 
 [![Build Status](https://travis-ci.org/Deepthi-Nacharaju/bme590hrm.svg?branch=master)](https://travis-ci.org/Deepthi-Nacharaju/bme590hrm)
 
