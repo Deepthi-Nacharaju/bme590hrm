@@ -59,11 +59,16 @@ def test_is_data_valid(file, expected):
             switch = False
     assert expected == switch
 
-#@pytest.mark.parametrize("file, expected",[
-#    ('sine.csv',)
-#])
-#def test_edge_case(file, expected):
-#    d
+
+@pytest.mark.parametrize("file, expected", [
+    ('sine.csv', (-0.25, -0.25)),
+])
+def test_edge_case(file, expected):
+    headers = ['time', 'voltage']
+    data = pd.read_csv(file, names=headers)
+    out = edge_case(data)
+    tup = (out.loc[0]['voltage'], out.loc[len(out)-1]['voltage'])
+    assert expected == tup
 
 #def test_plot_data(expected = 5):
     # headers = ['time', 'voltage']
