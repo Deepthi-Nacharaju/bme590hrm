@@ -7,7 +7,7 @@
 
 **Notes on Operation:**
 - Changing the butterworth cutoff frequency changes progam's ability to detect different types of peaks. Frequently used values include *0.0045, 0.005 (default), 0.0055 and 0.006*. These can be changed in the main function as *filter_value*.
-
+- If the maximum distance between two peaks is more than a specific distance from the average distance (indicating wide distribution), peak detection will run again after adding 0.002 to the cutoff frequency. This will cycle 3 times. 
 **Additional Capabilities:**
 
 - Opens and writes to an excel file in data folder called *Beat_Tracking.xlsx*. Records number of beats found over the entire interval.  
