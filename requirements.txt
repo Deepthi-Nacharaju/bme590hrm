@@ -4,14 +4,8 @@ pandas
 ipython
 jupyter
 matplotlib
-scikit-image
-scikit-learn
 sphinx
 pytest
 pytest-pep8
 pytest-cov
 openpyxl
-os
-logging
-json
-sys
