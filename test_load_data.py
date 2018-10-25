@@ -8,6 +8,7 @@ from load_data import calc_v_extreme
 from pytest import approx
 from load_data import user_input
 from load_data import is_data_valid
+from load_data import edge_case
 
 
 @pytest.mark.parametrize("file, expected", [
@@ -46,18 +47,23 @@ def test_user_input(file, dur, expected):
 def test_is_data_valid(file, expected):
     headers = ['time', 'voltage']
     data = pd.read_csv(file, names=headers)
-    data = is_data_valid(data)
+    valid_data = is_data_valid(data)
     switch = True
-    for x in data['time']:
+    for x in valid_data['time']:
         y = float(x)
         if x != y:
             switch = False
-    for x in data['voltage']:
+    for x in valid_data['voltage']:
         y = float(x)
         if x != y:
             switch = False
     assert expected == switch
 
+#@pytest.mark.parametrize("file, expected",[
+#    ('sine.csv',)
+#])
+#def test_edge_case(file, expected):
+#    d
 
 #def test_plot_data(expected = 5):
     # headers = ['time', 'voltage']
