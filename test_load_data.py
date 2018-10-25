@@ -9,6 +9,7 @@ from pytest import approx
 from load_data import user_input
 from load_data import is_data_valid
 from load_data import edge_case
+from load_data import check_spacing
 
 
 @pytest.mark.parametrize("file, expected", [
@@ -69,6 +70,22 @@ def test_edge_case(file, expected):
     out = edge_case(data)
     tup = (out.loc[0]['voltage'], out.loc[len(out)-1]['voltage'])
     assert expected == tup
+
+
+@pytest.mark.parametrize("file, expected, space, one, two",[
+    ('sine.csv', False, 1, 10, 12),
+    ('sine.csv', True, 0.5, 1, 120),
+])
+def test_check_spacing(file, expected, space, one, two):
+    headers = ['time', 'voltage']
+    data = pd.read_csv(file, names=headers)
+    found = []
+    found.append([one, data.loc[one]['time'], data.loc[one]['voltage']])
+    found.append([two, data.loc[two]['time'], data.loc[two]['voltage']])
+    headers = ['index', 'time', 'voltage']
+    return_df = pd.DataFrame(found, columns=headers)
+    out = check_spacing(return_df, data, space)
+    assert expected == out
 
 #def test_plot_data(expected = 5):
     # headers = ['time', 'voltage']
