@@ -4,27 +4,30 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy import diff
 import sys
-import scipy
 import scipy.signal as signal
 from scipy.signal import hilbert, chirp
 import json
 import logging
-from openpyxl import Workbook
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
-import math
+
 
 def plot_data(data, filtered, index, file):
     """
 
-    :param data: dataframe from reading csv
-    :param index: where beats occur in dataframe
-    :return: labeled plot with both data and red markers of peak detection
+    Args:
+        data: input data with padded ends
+        filtered: low pass enveloped data
+        index: locations of found peaks
+        file: name of csv file
+
+    Returns:
+
     """
+
     data_points = []
     headers = ['time', 'voltage']
     for x in index:
-        #data_points.append([data.loc[x]['time'], data.loc[x]['voltage']])
         data_points.append([data.loc[x]['time'], filtered[x]])
 
     data_points_df = pd.DataFrame(data_points, columns=headers)
@@ -38,20 +41,22 @@ def plot_data(data, filtered, index, file):
     plt.legend(['ECG', 'LPF Envelope', 'Detected Peak'])
     plt.show()
     logging.info('This only outputs a plot')
-    return filtered
+    return
 
 
 def plot_derivative(dx, dy, found, file):
     """
 
-    :param file: Name of working file
-    :param dx: time dataframe adjusted for derivative array size change
-    :param dy: derivative of data
-    :param found: dataframe containing index, time, and voltage of beats detected
-    :return: labeled plot with both derivative data and red markers of peak detection
+    Args:
+        dx: adjusted time vector
+        dy: differentiated data
+        found: data frame of found peaks containing time and voltage
+        file: name of csv
+
+    Returns:
+
     """
     plt.plot(dx['time'], dy)
-    #plt.plot(data['time'], filtered)
     plt.scatter(found['time'], found['voltage'], c='red')
     plt.title('First Derivative with Peak Detection: ' + str(file))
     plt.show()
@@ -61,8 +66,12 @@ def plot_derivative(dx, dy, found, file):
 def calc_duration(data):
     """
 
-    :param data: dataframe from reading csv
-    :return: duration of time column in data
+    Args:
+        data: input data before padding
+
+    Returns:
+        dur: duration of input data
+
     """
     try:
         dur = data.loc[data.index[-1]]['time']-data.loc[1]['time']
@@ -74,8 +83,12 @@ def calc_duration(data):
 def calc_v_extreme(data):
     """
 
-    :param data: dataframe from reading csv
-    :return: tuple containing minimum and maximum values
+    Args:
+        data: input data before padding
+
+    Returns:
+        store: tuple containing minimum and maximum voltage
+
     """
     max_val = data['voltage'].max()
     min_val = data['voltage'].min()
@@ -83,48 +96,43 @@ def calc_v_extreme(data):
     return store
 
 
-def find_peaks(data, filtered, dx):
+def find_derivative(data, dx):
     """
 
-    :param dx: time step size
-    :param filtered: Hilbert Filtered data
-    :param data: dataframe from reading csv
-    :return: differentiated voltage array
+    Args:
+        data: data to be differentiated
+        dx: time step size
+
+    Returns:
+        dy: differentiated data array
+
     """
-    #try:
-    dy = diff(filtered)/dx
-    #except TypeError:
-     #   dx = float(data.loc[3]['time'])-float(data.loc[2]['time'])
-      #  dy = list()
-        #for x, num in enumerate(data['voltage']):
-         #   if not x == 0:
-          #      dy.append(diff([data.loc[x]['voltage'], data.loc[x]['voltage']])/dx)
+    dy = diff(data)/dx
     return dy
 
 
 def find_peaks_two(dx, dy, data):
     """
 
-    :param data: imported data frame with padding
-    :param dx: time dataframe adjusted for derivative array size change
-    :param dy: differentiated voltage array
-    :return: data frame containing indices, time, and voltage where peak occurs
+    Args:
+        dx: adjusted time vector after differentiating voltage vector (off by one error)
+        dy: differentiated data
+        data: original data from csv file
+
+    Returns:
+        return_df: data frame containing index, time, and voltage point of isolated peaks
     """
-    peak_max = dy.max()*.35
-    #peak_max = 0
-    d = {'indices': [], 'time': [], 'voltage': []}
     return_values = []
     y_old = dy[0]
     index_old = -999
     indices = []
     switch = False
     go = False
-    avg = (dy.max()-dy.min())*.25+dy.min()
     for index, y in enumerate(dy):
         if y - y_old > 0 and float(data.loc[index]['time']) > 0:
             go = True
         if y - y_old <= 0 and index -index_old > 5 and switch == False and go == True:
-            if index_old == -999 or go == True: #data.loc[index]['time']-data.loc[index_old]['time'] > 0.001:
+            if index_old == -999 or go == True:
                 return_values.append([index, dx.loc[index]['time'], y])
                 indices.append(index)
                 index_old = index
@@ -140,8 +148,11 @@ def find_peaks_two(dx, dy, data):
 def user_input(duration):
     """
 
-    :param duration: the time length of the data file for use as default
-    :return: user chosen input for time window over which to average
+    Args:
+        duration: time duration of original data file
+
+    Returns:
+        out: user identified duration possibly by default
     """
     try:
         interval_one = sys.argv[1]
@@ -162,10 +173,13 @@ def user_input(duration):
 def calc_avg(interval, found, dur):
     """
 
-    :param interval: time length of data file
-    :param found: dataframe holding indices, time and voltage measurements of detected peaks
-    :param dur: calculated duration from calc_duration function
-    :return: calculated bpm measurement
+    Args:
+        interval: determined interval from user_input
+        found: data frame containing index, time, and voltage points of detected peaks
+        dur: duration of data file
+
+    Returns:
+
     """
     if not interval[1]:
         bpm = int(float(len(found['time']))/dur*60)
@@ -183,11 +197,14 @@ def calc_avg(interval, found, dur):
 def create_metrics(found, extreme, dur, bpm):
     """
 
-    :param found: dataframe containing indices, time, and voltage columns for where peaks occur
-    :param extreme: tuple containing max and min values
-    :param dur: duration of time vector from input
-    :param bpm: average bpm calculations in chosen interval
-    :return: dictionary called metrics that holds all requested values
+    Args:
+        found: data frame containing index, time, and voltage points of found peaks
+        extreme: max and min voltage found in data file
+        dur: the time length of the data file
+        bpm: number of beats per min in time interval requested by user
+
+    Returns:
+        metrics: dictionary requested by assignment
     """
     metrics = dict()
     metrics['voltage_extremes'] = extreme
@@ -203,9 +220,12 @@ def create_metrics(found, extreme, dur, bpm):
 def write_json(file, metrics):
     """
 
-    :param file: name of imported csv file
-    :param metrics: requested output that needs to be saved as a json
-    :return: saves metrics into json
+    Args:
+        file: name of file
+        metrics: dictionary containing necessary parameters for assignment
+
+    Returns:
+        saves a json file with the requested dictionary
     """
     json_name = file.split('.')[0] + '.json'
     with open(json_name, 'w') as outfile:
@@ -217,25 +237,30 @@ def write_json(file, metrics):
 def Hilbert(data, cutoff):
     """
 
-    :param data: padded data
-    :param cutoff: cutoff frequency for low pass filter
-    :return: enveloped with low pass filter data
+    Args:
+        data: input data with padding
+        cutoff:
+
+    Returns:
+        filtered: low pass filtered enveloped data
     """
     analytic_signal = hilbert(data['voltage'])
     amplitude_envelope = np.abs(analytic_signal)
-    N = 2  # Filter order
-    Wn = cutoff  # Cutoff frequency
-    B, A = signal.butter(N, Wn, output='ba')
-    filtered = signal.filtfilt(B, A, amplitude_envelope)
-    #filtered = signal.filtfilt(B, A, filtered)
+    n = 2  # Filter order
+    wn = cutoff  # Cutoff frequency
+    b, a = signal.butter(n, wn, output='ba')
+    filtered = signal.filtfilt(b, a, amplitude_envelope)
     return filtered
 
 
 def edge_case(data):
     """
 
-    :param data: read in data file
-    :return: data file padded with -.25
+    Args:
+        data: raw input data from csv file
+
+    Returns:
+        data: raw input data with padding
     """
     extra = []
     headers = ['time', 'voltage']
@@ -243,7 +268,7 @@ def edge_case(data):
         dt = data.loc[50]['time']-data.loc[49]['time']
     except TypeError:
         dt = float(data.loc[50]['time']) - float(data.loc[49]['time'])
-    for x in range(0,200):
+    for x in range(0, 200):
         extra.append([dt*x+float(data.loc[len(data['time'])-1]['time']), -0.25])
     extra = pd.DataFrame(extra, columns=headers)
     data = data.append(extra)
@@ -257,12 +282,15 @@ def edge_case(data):
     return data
 
 
-def check_spacing(found,data):
+def check_spacing(found, data):
     """
 
-    :param found: dataframe holding indices, time, and voltage of detected peaks
-    :param data: padded data
-    :return: boolean indicating if spacing of detected peaks is inconsistent and suspicious
+    Args:
+        found: data frame containing index, time, and voltage points of found peaks
+        data: imported data that has been padded
+
+    Returns:
+
     """
     difference = []
     old_x = 0
@@ -278,24 +306,23 @@ def check_spacing(found,data):
 def is_data_valid(data):
     """
 
-    :param data: input raw dataframe with time column
-    :return: data frame that removed all blank spaces or NaN
+    Args:
+        data: raw input data frame
+
+    Returns:
+        data: data that has been cast to floats
     """
     dropped = 0
     for index_, y in enumerate(data['time']):
         try:
             data['time'][index_] = float(y)
         except ValueError:
-            #print(data.loc[index_]['time'])
             data = data.drop(data.index[index_])
             dropped += 1
-            #print(y)
     for index_, y in enumerate(data['voltage']):
         try:
             data['voltage'][index_] = float(y)
         except ValueError:
-            #print(data.loc[index_]['voltage'])
-            #print(y)
             data = data.drop(data.index[index_])
             dropped += 1
     return data
@@ -304,11 +331,14 @@ def is_data_valid(data):
 def check_loop(found, data, filter_value, file):
     """
 
-    :param found: dataframe containing indices, time, and voltage of peaks
-    :param data: loaded padded data
-    :param filter_value: low pass filter value
-    :param file: file name
-    :return: updated found file after checking suspicions
+    Args:
+        found: data frame containing index, time, and voltage of found peaks
+        data: data that has been padded
+        filter_value: cutoff frequency for butterworth filter
+        file: name of csv file
+
+    Returns:
+        found: optimized data frame containing index, time, and voltage of found peaks
     """
     if not found.empty:
         check = check_spacing(found, data)
@@ -320,7 +350,6 @@ def check_loop(found, data, filter_value, file):
             plt.plot(data['time'], filtered)
             plt.title(str(file) + ' ' + str(counter))
             plt.show()
-            # dy = find_peaks(data, filtered, dx)
             dx = data.drop([0, 0])
             found = find_peaks_two(dx, filtered, data)
             check = check_spacing(found, data)
@@ -335,51 +364,39 @@ def write_excel(file_number, export_excel):
     wb = load_workbook('Beat_Tracking.xlsx')
     ws = wb.active
     counter = 0
-    yellowFill = PatternFill(start_color='FFFFFF00',
-                          end_color='FFFFFF00',
-                          fill_type='solid')
-    whiteFill = PatternFill(start_color='FFFFFFFF',
-                          end_color='FFFFFFFF',
-                          fill_type='solid')
-    orangeFill = PatternFill(start_color='FFFF8C00',
-                          end_color='FFFF8C00',
-                          fill_type='solid')
-
-    redFill =  PatternFill(start_color='FFFF0000',
-                          end_color='FFFF0000',
-                          fill_type='solid')
-    greenFill =  PatternFill(start_color='FF00FF00',
-                          end_color='FF00FF00',
-                          fill_type='solid')
-    greyFill =  PatternFill(start_color='FFC0C0C0',
-                          end_color='FFC0C0C0',
-                          fill_type='solid')
+    yellow_fill = PatternFill(start_color='FFFFFF00', end_color='FFFFFF00', fill_type='solid')
+    white_fill = PatternFill(start_color='FFFFFFFF', end_color='FFFFFFFF', fill_type='solid')
+    orange_fill = PatternFill(start_color='FFFF8C00', end_color='FFFF8C00', fill_type='solid')
+    red_fill = PatternFill(start_color='FFFF0000', end_color='FFFF0000', fill_type='solid')
+    green_fill = PatternFill(start_color='FF00FF00', end_color='FF00FF00', fill_type='solid')
+    grey_fill = PatternFill(start_color='FFC0C0C0', end_color='FFC0C0C0', fill_type='solid')
     for x in file_number:
         ws['C' + str(int(x) + 1)] = str(export_excel[counter])
         counter += 1
         try:
-            if np.abs(int(ws['C'+ str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) > 10:
-                ws['C' + str(int(x) + 1)].fill = greyFill
+            if np.abs(int(ws['C' + str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) > 10:
+                ws['C' + str(int(x) + 1)].fill = grey_fill
                 ws['C' + str(int(x) + 1)] = str('Bad Data')
-            elif np.abs(int(ws['C'+ str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) > 5:
-                ws['C' + str(int(x) + 1)].fill = redFill
+            elif np.abs(int(ws['C' + str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) > 5:
+                ws['C' + str(int(x) + 1)].fill = red_fill
             elif np.abs(int(ws['C' + str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) > 2:
-                ws['C' + str(int(x) + 1)].fill = orangeFill
-            elif np.abs(int(ws['C'+ str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) > 0:
-                ws['C' + str(int(x) + 1)].fill = yellowFill
+                ws['C' + str(int(x) + 1)].fill = orange_fill
+            elif np.abs(int(ws['C' + str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) > 0:
+                ws['C' + str(int(x) + 1)].fill = yellow_fill
             elif np.abs(int(ws['C' + str(int(x) + 1)].value) - int(ws['B' + str(int(x) + 1)].value)) == 0:
-                ws['C' + str(int(x) + 1)].fill = greenFill
+                ws['C' + str(int(x) + 1)].fill = green_fill
             else:
-                ws['C' + str(int(x) + 1)].fill = whiteFill
+                ws['C' + str(int(x) + 1)].fill = white_fill
         except TypeError:
             print('File ' + str(x) + ' has not been tracked')
-            ws['C' + str(int(x) + 1)].fill = whiteFill
+            ws['C' + str(int(x) + 1)].fill = white_fill
     wb.save('Beat_Tracking.xlsx')
 
 def main():
     """
 
-    :return: saved json file of dictionary metrics that holds all requested values
+    Returns: saved json file and lots of plots of viewing
+
     """
     plt.close('all')
     new_path = os.getcwd() + '/data'
@@ -403,7 +420,7 @@ def main():
                 data = edge_case(data)
                 filter_value = 0.005
                 filtered = Hilbert(data, filter_value)
-                dy = find_peaks(data, filtered, dx)
+                dy = find_derivative(filtered, dx)
                 dx = data.drop([0, 0])
                 found = find_peaks_two(dx, filtered, data)
                 found = check_loop(found, data, filter_value, file)
