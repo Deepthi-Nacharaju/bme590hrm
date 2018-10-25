@@ -12,6 +12,7 @@ from load_data import edge_case
 from load_data import check_spacing
 from load_data import Hilbert
 import numpy.fft as fft
+from load_data import create_metrics
 
 
 @pytest.mark.parametrize("file, expected", [
@@ -101,6 +102,14 @@ def test_Hilbert(file, expected):
     assert expected == expected
 
 
+@pytest.mark.parametrize("file, expected", [
+    ('sine.csv', type({}))
+])
+def test_create_metrics(file, expected):
+    headers = ['time', 'voltage']
+    data = pd.read_csv(file, names=headers)
+    out = create_metrics(data, 1, 1, 1)
+    assert expected == type(out)
 
 #def test_plot_data(expected = 5):
     # headers = ['time', 'voltage']
