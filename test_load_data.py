@@ -14,6 +14,8 @@ from load_data import Hilbert
 import numpy.fft as fft
 from load_data import create_metrics
 from load_data import write_json
+from load_data import write_excel
+from openpyxl import load_workbook
 
 
 @pytest.mark.parametrize("file, expected", [
@@ -113,7 +115,7 @@ def test_create_metrics(file, expected):
     assert expected == type(out)
 
 
-@pytest.mark.parametrize("file, expected",[
+@pytest.mark.parametrize("file, expected", [
     ('sine.csv', True)
 ])
 def test_write_json(file, expected):
@@ -125,6 +127,18 @@ def test_write_json(file, expected):
         if file == json_file_name + '.json':
             out = True
     assert expected == out
+
+
+@pytest.mark.parametrize("file, expected", [
+    (list([1, 2, 3]), list([1, 2, 3]))
+])
+def test_write_excel(file, expected):
+    write_excel(file, expected, 'test_write_excel.xlsx')
+    wb = load_workbook('test_write_excel.xlsx')
+    ws = wb.active
+    out = int(ws['C' + str(int(file[0]) + 1)].value)
+    assert expected[0] == out
+
 
 
 #def test_plot_data(expected = 5):
