@@ -58,6 +58,7 @@ def calc_duration(data):
     except TypeError:
         dur = float(data.loc[data.index[-1]]['time']) - \
               float(data.loc[1]['time'])
+        logging.warning('input data point was not a float')
     return dur
 
 
@@ -169,7 +170,7 @@ def calc_avg(interval, found, dur):
         bpm_range = interval[0]
         bpm_count = 0
         for x in found['time']:
-            if x > bpm_range[0] and x < bpm_range[1]:
+            if bpm_range[0] > x < bpm_range[1]:
                 bpm_count += 1
         bpm = float(bpm_count)/(float(bpm_range[1])-float(bpm_range[0]))*60
 
@@ -252,6 +253,7 @@ def edge_case(data):
         dt = data.loc[50]['time']-data.loc[49]['time']
     except TypeError:
         dt = float(data.loc[50]['time']) - float(data.loc[49]['time'])
+        logging.warning('data was not a float')
     for x in range(0, 200):
         extra.append([dt*x+float(data.loc[len(data['time'])-1]['time']),
                       -0.25])
@@ -307,12 +309,14 @@ def is_data_valid(data):
         except ValueError:
             data = data.drop(data.index[index_])
             dropped += 1
+            logging.warning('Data type was not a float')
     for index_, y in enumerate(data['voltage']):
         try:
             data['voltage'][index_] = float(y)
         except ValueError:
             data = data.drop(data.index[index_])
             dropped += 1
+            logging.warning('Data type was not a float')
     return data
 
 
@@ -436,11 +440,6 @@ def main():
                 dur = calc_duration(data)
                 interval = user_input(dur, (2, 3))
                 data = is_data_valid(data)
-                try:
-                    dx = data.loc[3]['time'] - data.loc[2]['time']
-                except TypeError:
-                    dx = float(data.loc[3]['time']) - \
-                         float(data.loc[2]['time'])
                 data = edge_case(data)
                 filter_value = 0.005
                 filtered = Hilbert(data, filter_value)
@@ -457,7 +456,7 @@ def main():
                 file_number.append(numb)
         except IndexError:
             print('Ignore Folder')
-
+            logging.info('Ignore folder when loading csv files')
     write_excel(file_number, export_excel, 'Beat_Tracking.xlsx')
 
 
