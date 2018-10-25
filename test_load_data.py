@@ -13,6 +13,7 @@ from load_data import check_spacing
 from load_data import Hilbert
 import numpy.fft as fft
 from load_data import create_metrics
+from load_data import write_json
 
 
 @pytest.mark.parametrize("file, expected", [
@@ -110,6 +111,21 @@ def test_create_metrics(file, expected):
     data = pd.read_csv(file, names=headers)
     out = create_metrics(data, 1, 1, 1)
     assert expected == type(out)
+
+
+@pytest.mark.parametrize("file, expected",[
+    ('sine.csv', True)
+])
+def test_write_json(file, expected):
+    metrics = {'thing_one': 1, 'thing_two': 2}
+    write_json(file, metrics)
+    json_file_name = file.split('.')[0]
+    out = False
+    for file in os.listdir(os.getcwd()):
+        if file == json_file_name + '.json':
+            out = True
+    assert expected == out
+
 
 #def test_plot_data(expected = 5):
     # headers = ['time', 'voltage']
