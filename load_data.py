@@ -12,7 +12,7 @@ from openpyxl.styles import PatternFill
 
 
 def plot_data(data, filtered, index, file):
-    """
+    """ Plots original data, data envelope with low pass filter, and detected peaks
 
     Args:
         data: input data with padded ends
@@ -44,7 +44,7 @@ def plot_data(data, filtered, index, file):
 
 
 def calc_duration(data):
-    """
+    """ Calculates duration of input data file
 
     Args:
         data: input data before padding
@@ -62,7 +62,7 @@ def calc_duration(data):
 
 
 def calc_v_extreme(data):
-    """
+    """ Takes max and minimum of input voltage data
 
     Args:
         data: input data before padding
@@ -77,13 +77,11 @@ def calc_v_extreme(data):
     return store
 
 
-def peak_detector(dx, dy, data):
-    """
+def peak_detector(filtered, data):
+    """ Takes ECG data and detects peaks
 
     Args:
-        dx: adjusted time vector after differentiating voltage vector
-        (off by one error)
-        dy: differentiated data
+        filtered: envelope with low pass butterworth filter
         data: original data from csv file
 
     Returns:
@@ -91,18 +89,18 @@ def peak_detector(dx, dy, data):
         voltage point of isolated peaks
     """
     return_values = []
-    y_old = dy[0]
+    y_old = filtered[0]
     index_old = -999
     indices = []
     switch = False
     go = False
-    for index, y in enumerate(dy):
+    for index, y in enumerate(filtered):
         if y - y_old > 0 and float(data.loc[index]['time']) > 0:
             go = True
         if y - y_old <= 0 and index - index_old > 5 \
                 and switch is False and go is True:
             if index_old == -999 or go is True:
-                return_values.append([index, dx.loc[index]['time'], y])
+                return_values.append([index, data.loc[index]['time'], y])
                 indices.append(index)
                 index_old = index
                 switch = True
@@ -115,9 +113,9 @@ def peak_detector(dx, dy, data):
 
 
 def user_input(duration, window=None):
-    """
+    """ User Input for choosing window over which to take average
 
-    User Input for choosing window over which to take average
+
     Args:
         window: Optional input to determine window from within
                 load_data.py
@@ -140,7 +138,6 @@ def user_input(duration, window=None):
         if interval > duration:
             print('User Input Exceeds Data Duration. Default = ' + str(duration))
             out = list([duration, False])
-        return out
     else:
         try:
             interval_one = window[0]
@@ -151,10 +148,11 @@ def user_input(duration, window=None):
             print('User input for window must be a tuple with two numbers')
             print('Default = ' + str(interval))
             out = list([interval, False])
+    return out
 
 
 def calc_avg(interval, found, dur):
-    """
+    """ Calculates bpm over chosen interval
 
     Args:
         interval: determined interval from user_input
@@ -179,7 +177,7 @@ def calc_avg(interval, found, dur):
 
 
 def create_metrics(found, extreme, dur, bpm):
-    """
+    """ Creates metrics dictionary
 
     Args:
         found: data frame containing index,
@@ -203,7 +201,7 @@ def create_metrics(found, extreme, dur, bpm):
 
 
 def write_json(file, metrics):
-    """
+    """ Writes json file
 
     Args:
         file: name of file
@@ -221,7 +219,7 @@ def write_json(file, metrics):
 
 
 def Hilbert(data, cutoff):
-    """
+    """ Creates envelope and low pass filters data
 
     Args:
         data: input data with padding
@@ -240,7 +238,7 @@ def Hilbert(data, cutoff):
 
 
 def edge_case(data):
-    """
+    """ Pads the input data with -0.25 to increase efficiency of peak detection
 
     Args:
         data: raw input data from csv file
@@ -318,10 +316,11 @@ def is_data_valid(data):
     return data
 
 
-def check_loop(found, data, filter_value, file, space):
+def check_loop(found, data, filter_value, file, space, print_plot):
     """
 
     Args:
+        print_plot: 1 for plot filtered data, 0 for don't
         space: ensuring this distance between peaks
         found: data frame containing index, time,
         and voltage of found peaks
@@ -339,12 +338,12 @@ def check_loop(found, data, filter_value, file, space):
         while check:
             filter_value += 0.002
             filtered = Hilbert(data, filter_value)
-            plt.plot(data['time'], data['voltage'])
-            plt.plot(data['time'], filtered)
-            plt.title(str(file) + ' ' + str(counter))
-            plt.show()
-            dx = data.drop([0, 0])
-            found = peak_detector(dx, filtered, data)
+            if print_plot:
+                plt.plot(data['time'], data['voltage'])
+                plt.plot(data['time'], filtered)
+                plt.title(str(file) + ' ' + str(counter))
+                plt.show()
+            found = peak_detector(filtered, data)
             check = check_spacing(found, data, 1)
             if counter == 3:
                 check = False
@@ -354,6 +353,16 @@ def check_loop(found, data, filter_value, file, space):
 
 
 def write_excel(file_number, export_excel, excel_file_name):
+    """ Exports all saved bpm values to excel sheet for comparison
+
+    Args:
+        file_number: list of test_data numbers in the working directory
+        export_excel: list of bpms that need to be written to the excel sheet
+        excel_file_name: name of the excels sheet you want to open and edit
+
+    Returns:
+
+    """
     wb = load_workbook(excel_file_name)
     ws = wb.active
     counter = 0
@@ -416,6 +425,7 @@ def main():
     export_excel = list()
     file_number = list()
     space = 1
+    print_plot = 0
     for file in os.listdir(os.getcwd()):
         print(file)
         try:
@@ -423,7 +433,7 @@ def main():
                 data = pd.read_csv(file, names=headers)
                 extreme = calc_v_extreme(data)
                 dur = calc_duration(data)
-                interval = user_input(dur, (5, 7))
+                interval = user_input(dur, (2, 3))
                 data = is_data_valid(data)
                 try:
                     dx = data.loc[3]['time'] - data.loc[2]['time']
@@ -433,12 +443,12 @@ def main():
                 data = edge_case(data)
                 filter_value = 0.005
                 filtered = Hilbert(data, filter_value)
-                dx = data.drop([0, 0])
-                found = peak_detector(dx, filtered, data)
-                found = check_loop(found, data, filter_value, file, space)
+                found = peak_detector(filtered, data)
+                found = check_loop(found, data, filter_value, file, space, print_plot)
                 bpm = calc_avg(interval, found, dur)
                 metrics = create_metrics(found, extreme, dur, bpm)
-                # plot_data(data, filtered, found['index'], file)
+                if print_plot:
+                    plot_data(data, filtered, found['index'], file)
                 write_json(file, metrics)
                 export_excel.append(metrics['num_beats'])
                 numb = file.split('.')[0]
