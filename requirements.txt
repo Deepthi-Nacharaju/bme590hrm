@@ -11,7 +11,7 @@ pytest
 pytest-pep8
 pytest-cov
 openpyxl
-sys
 os
 logging
 json
+sys
