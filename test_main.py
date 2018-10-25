@@ -16,7 +16,7 @@ from main import write_json
 from main import write_excel
 from openpyxl import load_workbook
 from main import calc_avg
-
+from main import peak_detector
 
 @pytest.mark.parametrize("file, expected", [
     ('sine.csv', (1.0, -1.0)),
@@ -149,3 +149,14 @@ def test_calc_avg(interval, found, dur, expected):
     bpm = calc_avg(interval, found, dur)
     assert expected == bpm
 
+
+@pytest.mark.parametrize("file, expected", [
+    ('test_data22.csv', 34),
+])
+def test_peak_detector(file, expected):
+    headers = ['time', 'voltage']
+    data = pd.read_csv(file, names=headers)
+    filtered = Hilbert(data, 0.005)
+    df = peak_detector(filtered, data)
+    out = len(df['index'])
+    assert expected == out
