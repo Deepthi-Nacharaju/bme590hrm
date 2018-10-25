@@ -1,21 +1,21 @@
 import pytest
-from load_data import plot_data
+from main import plot_data
 import os
 import pandas as pd
-from load_data import plot_derivative
-from load_data import calc_duration
-from load_data import calc_v_extreme
+from main import calc_duration
+from main import calc_v_extreme
 from pytest import approx
-from load_data import user_input
-from load_data import is_data_valid
-from load_data import edge_case
-from load_data import check_spacing
-from load_data import Hilbert
+from main import user_input
+from main import is_data_valid
+from main import edge_case
+from main import check_spacing
+from main import Hilbert
 import numpy.fft as fft
-from load_data import create_metrics
-from load_data import write_json
-from load_data import write_excel
+from main import create_metrics
+from main import write_json
+from main import write_excel
 from openpyxl import load_workbook
+from main import calc_avg
 
 
 @pytest.mark.parametrize("file, expected", [
@@ -48,7 +48,7 @@ def test_user_input(file, dur, expected):
     assert expected == out
 
 
-@pytest.mark.parametrize("file, expected",[
+@pytest.mark.parametrize("file, expected", [
     ('sine.csv', True),
 ])
 def test_is_data_valid(file, expected):
@@ -78,14 +78,14 @@ def test_edge_case(file, expected):
     assert expected == tup
 
 
-@pytest.mark.parametrize("file, expected, space, one, two",[
+@pytest.mark.parametrize("file, expected, space, one, two", [
     ('sine.csv', False, 1, 10, 12),
     ('sine.csv', True, 0.5, 1, 120),
 ])
 def test_check_spacing(file, expected, space, one, two):
     headers = ['time', 'voltage']
     data = pd.read_csv(file, names=headers)
-    found = []
+    found = list()
     found.append([one, data.loc[one]['time'], data.loc[one]['voltage']])
     found.append([two, data.loc[two]['time'], data.loc[two]['voltage']])
     headers = ['index', 'time', 'voltage']
@@ -140,32 +140,12 @@ def test_write_excel(file, expected):
     assert expected[0] == out
 
 
+@pytest.mark.parametrize("interval, found, dur, expected", [
+    ([10, False], [1, 2, 3, 4, 5], 5, 60),
+])
+def test_calc_avg(interval, found, dur, expected):
+    headers = ['time']
+    found = pd.DataFrame(found, columns=headers)
+    bpm = calc_avg(interval, found, dur)
+    assert expected == bpm
 
-#def test_plot_data(expected = 5):
-    # headers = ['time', 'voltage']
-    # data = pd.read_csv('sine.csv', names=headers)
-    # file = 'sine.csv'
-    # filtered = list(data)
-    # index = pd.DataFrame([1, 2], columns='index')
-    # headers = ['time', 'voltage']
-    # data = pd.DataFrame(data, columns=headers)
-    # plot_data(data, filtered, index['index'], file)
-    # assert 5 == 5
-
-
-#def test_plot_derivative(expected = 5):
-    # headers = ['time', 'voltage']
-    # data = pd.read_csv('sine.csv', names=headers)
-    # file = 'sine.csv'
-    # headers = ['time', 'voltage']
-    # data = pd.DataFrame(data, columns=headers)
-    # found = []
-    # plot_derivative(data['time'], data['voltage'], found, file)
-    #assert expected == expected
-#@pytest.mark.parametrize("data, expected", [
-#    (data, 75),
-#    ]
-#                         )
-#def test_calc_duration(data, expected):
-#    response = calc_duration(data)
-#    assert response == expected
