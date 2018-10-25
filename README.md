@@ -6,13 +6,22 @@
 [![Build Status](https://travis-ci.org/Deepthi-Nacharaju/bme590hrm.svg?branch=master)](https://travis-ci.org/Deepthi-Nacharaju/bme590hrm)
 
 **Notes on Operation:**
-- Changing the butterworth cutoff frequency changes progam's ability to detect different types of peaks. Frequently used values include *0.0045, 0.005 (default), 0.0055 and 0.006*. These can be changed in the main function as *filter_value*.
-- If the maximum distance between two peaks is more than a specific distance from the average distance (indicating wide distribution), peak detection will run again after adding 0.002 to the cutoff frequency. This will cycle 3 times. 
+- Changing the butterworth cutoff frequency changes progam's ability to detect different types of peaks. 
+Frequently used values include *0.0045, 0.005 (default), 0.0055 and 0.006*. These can be changed in the
+ main function as *filter_value*.
+ 
+- If the maximum distance between two peaks is more than a specified distance from the average distance 
+(indicating wide distribution), peak detection will run again after adding 0.002 to the cutoff frequency. 
+This will cycle 3 times. 
+
 **Additional Capabilities:**
 
-- Opens and writes to an excel file in data folder called *Beat_Tracking.xlsx*. Records number of beats found over the entire interval.  
-Then highlights the cell in different colors if different than the hand counted value in the previous column. 
-Use this to quickly determine how changes affect peak detection functionality across all 30+ csv files.
+- Data identified as bad will print as such in the excel file
+
+- Opens and writes to an excel file in data folder called *Beat_Tracking.xlsx*. Records number of beats found 
+over the entire interval. Then highlights the cell in different colors if different than the hand counted value 
+in the previous column. Use this to quickly determine how changes affect peak detection functionality across 
+all 30+ csv files.
 
 - Running *main.py* from the terminal followed by a tuple with starting and ending time points will allow user to interactively change bpm calculation window. 
 
