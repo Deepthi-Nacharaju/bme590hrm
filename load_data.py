@@ -44,25 +44,6 @@ def plot_data(data, filtered, index, file):
     return
 
 
-def plot_derivative(dx, dy, found, file):
-    """
-
-    Args:
-        dx: adjusted time vector
-        dy: differentiated data
-        found: data frame of found peaks containing time and voltage
-        file: name of csv
-
-    Returns:
-
-    """
-    plt.plot(dx['time'], dy)
-    plt.scatter(found['time'], found['voltage'], c='red')
-    plt.title('First Derivative with Peak Detection: ' + str(file))
-    plt.show()
-    logging.info('only outputs a plot')
-
-
 def calc_duration(data):
     """
 
