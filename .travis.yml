@@ -2,8 +2,8 @@ language: python
 python:
       - "3.6"
 before_install:
-    - sudo apt-get install python-os
-    - sudo apt-get install python-sys
+      - sudo apt-get install python-os
+      - sudo apt-get install python-sys
 install:
       - pip install -r requirements.txt
 script:
