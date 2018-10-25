@@ -10,6 +10,8 @@ from load_data import user_input
 from load_data import is_data_valid
 from load_data import edge_case
 from load_data import check_spacing
+from load_data import Hilbert
+import numpy.fft as fft
 
 
 @pytest.mark.parametrize("file, expected", [
@@ -86,6 +88,19 @@ def test_check_spacing(file, expected, space, one, two):
     return_df = pd.DataFrame(found, columns=headers)
     out = check_spacing(return_df, data, space)
     assert expected == out
+
+
+@pytest.mark.parametrize("file, expected", [
+    ('sine.csv', True)
+])
+def test_Hilbert(file, expected):
+    headers = ['time', 'voltage']
+    data = pd.read_csv(file, names=headers)
+    freq = fft.fft(data['voltage'])
+    data_lpf = Hilbert(data, 0.0001)
+    assert expected == expected
+
+
 
 #def test_plot_data(expected = 5):
     # headers = ['time', 'voltage']
