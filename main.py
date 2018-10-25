@@ -118,7 +118,7 @@ def user_input(duration, window=None):
 
     Args:
         window: Optional input to determine window from within
-                load_data.py
+                main.py
         duration: time duration of original data file
 
     Returns:
@@ -268,10 +268,10 @@ def edge_case(data):
 
 
 def check_spacing(found, data, space):
-    """
+    """ Ensures peaks are close enough together
 
     Args:
-        space: ensure distance between found peaks
+        space: specify distance between found peaks
         is not more than this in seconds
         found: data frame containing index,
         time, and voltage points of found peaks
@@ -292,7 +292,7 @@ def check_spacing(found, data, space):
 
 
 def is_data_valid(data):
-    """
+    """ Makes sure there is no bad data within the data frame
 
     Args:
         data: raw input data frame
@@ -317,7 +317,7 @@ def is_data_valid(data):
 
 
 def check_loop(found, data, filter_value, file, space, print_plot):
-    """
+    """ Change cutoff frequency if detected peaks are too far apart
 
     Args:
         print_plot: 1 for plot filtered data, 0 for don't
@@ -361,6 +361,7 @@ def write_excel(file_number, export_excel, excel_file_name):
         excel_file_name: name of the excels sheet you want to open and edit
 
     Returns:
+        Saved excel file can be found in working directory
 
     """
     wb = load_workbook(excel_file_name)
@@ -413,7 +414,7 @@ def write_excel(file_number, export_excel, excel_file_name):
 
 
 def main():
-    """
+    """ Does all the things
 
     Returns: saved json file and lots of plots of viewing
 
