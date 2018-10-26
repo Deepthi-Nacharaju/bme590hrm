@@ -17,6 +17,8 @@ from main import write_excel
 from openpyxl import load_workbook
 from main import calc_avg
 from main import peak_detector
+from main import threshold_peak_detect
+
 
 @pytest.mark.parametrize("file, expected", [
     ('sine.csv', (1.0, -1.0)),
