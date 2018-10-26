@@ -15,7 +15,8 @@ def plot_data(data, filtered, index, file, method):
     """ Plots original data, data envelope with low pass filter, and detected peaks
 
     Args:
-        method: Method 1 means peak detection; Method 0 means threshold peak detection
+        method: Method 1 means peak detection; Method 0
+        means threshold peak detection
         data: input data with padded ends
         filtered: low pass enveloped data
         index: locations of found peaks
@@ -141,7 +142,8 @@ def user_input(duration, window=None):
             interval = list([float(interval_one), float(interval_two)])
             out = list([interval, True])
             if interval[1] > duration or interval[0] < 0:
-                print('User Input Exceeds Data Duration. Default = ' + str(duration))
+                print('User Input Exceeds Data Duration. '
+                      'Default = ' + str(duration))
                 out = list([duration, False])
         except IndexError:
             interval = duration
@@ -158,7 +160,8 @@ def user_input(duration, window=None):
             interval = list([float(interval_one), float(interval_two)])
             out = list([interval, True])
             if interval[1] > duration or interval[0] < 0:
-                print('User Input Exceeds Data Duration. Default = ' + str(duration))
+                print('User Input Exceeds Data Duration. '
+                      'Default = ' + str(duration))
                 out = list([duration, False])
         except TypeError:
             print('User input for window must be a tuple with two numbers')
@@ -512,7 +515,8 @@ def main():
                 else:
                     method = 1
                 found = peak_detector(filtered, data)
-                found = check_loop(found, data, filter_value, file, space, print_plot, extreme)
+                found = check_loop(found, data, filter_value,
+                                   file, space, print_plot, extreme)
                 bpm = calc_avg(interval, found, dur)
                 metrics = create_metrics(found, extreme, dur, bpm)
                 if print_plot:
