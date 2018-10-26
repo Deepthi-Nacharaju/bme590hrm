@@ -501,7 +501,7 @@ def main():
     file_number = list()
     space = 1
     print_plot = 1
-    user_interval = (2, 3) # SPECIFY USER WINDOW WITH THIS TUPLE IN SECONDS
+    user_interval = (2, 3)  # SPECIFY USER WINDOW WITH THIS TUPLE IN SECONDS
     for file in os.listdir(os.getcwd()):
         print(file)
         try:
