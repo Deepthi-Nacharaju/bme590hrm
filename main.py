@@ -48,7 +48,8 @@ def plot_data(data, filtered, index, file, method, user_interval):
     plt.xlabel('Time (s)')
     plt.title('ECG with Peak Detection: ' + str(file))
     if not np.isnan(np.sum(filtered)):
-        plt.legend(['ECG', 'LPF Envelope', 'User Window', 'User Window', 'Detected Peak', ])
+        plt.legend(['ECG', 'LPF Envelope', 'User Window',
+                    'User Window', 'Detected Peak', ])
     else:
         plt.legend(['ECG', 'User Window', 'User Window', 'Detected Peak', ])
     plt.show()
@@ -171,11 +172,13 @@ def user_input(duration, window=None):
                       'Default = ' + str(duration))
                 out = list([duration, False])
         except ValueError:
-            print('User input for window must be a tuple or array with two numbers')
+            print('User input for window must be a tuple or '
+                  'array with two numbers')
             print('Default = ' + str(duration))
             out = list([duration, False])
         except IndexError:
-            print('User input for window must be a tuple or array with two numbers')
+            print('User input for window must be a tuple or '
+                  'array with two numbers')
             print('Default = ' + str(duration))
             out = list([duration, False])
     return out
@@ -529,7 +532,8 @@ def main():
                 bpm = calc_avg(interval, found, dur)
                 metrics = create_metrics(found, extreme, dur, bpm)
                 if print_plot:
-                    plot_data(data, filtered, found['index'], file, method, user_interval)
+                    plot_data(data, filtered, found['index'],
+                              file, method, user_interval)
                 write_json(file, metrics)
                 export_excel.append(metrics['num_beats'])
                 numb = file.split('.')[0]
