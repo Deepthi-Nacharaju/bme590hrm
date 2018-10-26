@@ -11,10 +11,11 @@ from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
 
 
-def plot_data(data, filtered, index, file):
+def plot_data(data, filtered, index, file, method):
     """ Plots original data, data envelope with low pass filter, and detected peaks
 
     Args:
+        method: Method 1 means peak detection; Method 0 means threshold peak detection
         data: input data with padded ends
         filtered: low pass enveloped data
         index: locations of found peaks
@@ -26,9 +27,12 @@ def plot_data(data, filtered, index, file):
 
     data_points = []
     headers = ['time', 'voltage']
-    for x in index:
-        data_points.append([data.loc[x]['time'], filtered[x]])
-
+    if method:
+        for x in index:
+            data_points.append([data.loc[x]['time'], filtered[x]])
+    else:
+        for x in index:
+            data_points.append([data.loc[x]['time'], data.loc[x]['voltage']])
     data_points_df = pd.DataFrame(data_points, columns=headers)
     plt.plot(data['time'], data['voltage'])
     plt.scatter(data_points_df['time'], data_points_df['voltage'], c='red')
@@ -95,16 +99,21 @@ def peak_detector(filtered, data):
     indices = []
     switch = False
     go = False
+    round_data = list()
+    for x in data['voltage']:
+        round_data.append(round(float(x), 1))
+    median_voltage = max(set(round_data), key=round_data.count)
     for index, y in enumerate(filtered):
         if y - y_old > 0 and float(data.loc[index]['time']) > 0:
             go = True
         if y - y_old <= 0 and index - index_old > 5 \
                 and switch is False and go is True:
             if index_old == -999 or go is True:
-                return_values.append([index, data.loc[index]['time'], y])
-                indices.append(index)
-                index_old = index
-                switch = True
+                if filtered[index] > median_voltage + .2 * median_voltage:
+                    return_values.append([index, data.loc[index]['time'], y])
+                    indices.append(index)
+                    index_old = index
+                    switch = True
         if y - y_old > 0 and go is True:
             switch = False
         y_old = y
@@ -131,13 +140,16 @@ def user_input(duration, window=None):
             interval_two = sys.argv[2]
             interval = list([float(interval_one), float(interval_two)])
             out = list([interval, True])
+            if interval[1] > duration or interval[0] < 0:
+                print('User Input Exceeds Data Duration. Default = ' + str(duration))
+                out = list([duration, False])
         except IndexError:
             interval = duration
             print('No Time Window Indicated. Default = ' + str(interval))
             out = list([interval, False])
-        logging.debug('What type of error does this cause? --> IndexError')
-        if interval > duration:
-            print('User Input Exceeds Data Duration. Default = ' + str(duration))
+        except ValueError:
+            print('Running --pep8 test messes up argument numbers')
+            print('Default = ' + str(duration))
             out = list([duration, False])
     else:
         try:
@@ -145,10 +157,13 @@ def user_input(duration, window=None):
             interval_two = window[1]
             interval = list([float(interval_one), float(interval_two)])
             out = list([interval, True])
+            if interval[1] > duration or interval[0] < 0:
+                print('User Input Exceeds Data Duration. Default = ' + str(duration))
+                out = list([duration, False])
         except TypeError:
             print('User input for window must be a tuple with two numbers')
-            print('Default = ' + str(interval))
-            out = list([interval, False])
+            print('Default = ' + str(duration))
+            out = list([duration, False])
     return out
 
 
@@ -238,10 +253,12 @@ def Hilbert(data, cutoff):
     return filtered
 
 
-def edge_case(data):
+def edge_case(data, amount, level):
     """ Pads the input data with -0.25 to increase efficiency of peak detection
 
     Args:
+        level: Voltage to set padding to
+        amount: Number of points used to buffer either side of data set
         data: raw input data from csv file
 
     Returns:
@@ -254,15 +271,15 @@ def edge_case(data):
     except TypeError:
         dt = float(data.loc[50]['time']) - float(data.loc[49]['time'])
         logging.warning('data was not a float')
-    for x in range(0, 200):
+    for x in range(0, amount):
         extra.append([dt*x+float(data.loc[len(data['time'])-1]['time']),
-                      -0.25])
+                      level])
     extra = pd.DataFrame(extra, columns=headers)
     data = data.append(extra, sort=False)
     data = data.reset_index()
     extra2 = []
-    for x in range(0, 200):
-        extra2.append([float(data.loc[0]['time']) - dt*200 + dt * x, -0.25])
+    for x in range(0, amount):
+        extra2.append([float(data.loc[0]['time']) - dt*200 + dt * x, level])
     extra2 = pd.DataFrame(extra2, columns=headers)
     data = extra2.append(data, sort=False)
     data = data.reset_index()
@@ -320,10 +337,11 @@ def is_data_valid(data):
     return data
 
 
-def check_loop(found, data, filter_value, file, space, print_plot):
+def check_loop(found, data, filter_value, file, space, print_plot, max_min):
     """ Change cutoff frequency if detected peaks are too far apart
 
     Args:
+        max_min: Tuple containing max and min voltage from data set
         print_plot: 1 for plot filtered data, 0 for don't
         space: ensuring this distance between peaks
         found: data frame containing index, time,
@@ -352,7 +370,49 @@ def check_loop(found, data, filter_value, file, space, print_plot):
             if counter == 3:
                 check = False
             counter += 1
+    else:
+        found_pos = threshold_peak_detect(data, max_min, 1)
+        found_neg = threshold_peak_detect(data, max_min, 0)
+        if len(found_pos['index']) > len(found_neg['index']):
+            found = found_neg
+        else:
+            found = found_pos
 
+    return found
+
+
+def threshold_peak_detect(data, max_min, sign):
+    """
+
+    Args:
+        data: input data with padding
+        max_min: tuple containing max and min
+        sign: use positive or negative threshold
+
+    Returns:
+
+    """
+    max_val = max_min[0]
+    min_val = max_min[1]
+    if sign:
+        thresh = .75 * float(max_val)
+    else:
+        thresh = .75 * float(min_val)
+    switch = False
+    count = 0
+    found = list()
+    for index, x in enumerate(data['voltage']):
+        x = float(x)
+        x = -1 * x
+        thresh = -1 * x
+        if x > thresh and switch is False:
+            switch = True
+            count += 1
+            found.append([index, data.loc[index]['time'], x])
+        elif x < thresh:
+            switch = False
+    headers = ['index', 'time', 'voltage']
+    found = pd.DataFrame(found, columns=headers)
     return found
 
 
@@ -430,7 +490,7 @@ def main():
     export_excel = list()
     file_number = list()
     space = 1
-    print_plot = 0
+    print_plot = 1
     for file in os.listdir(os.getcwd()):
         print(file)
         try:
@@ -440,15 +500,23 @@ def main():
                 dur = calc_duration(data)
                 interval = user_input(dur, (2, 3))
                 data = is_data_valid(data)
-                data = edge_case(data)
+                avg_v = 0
+                for x in data['voltage']:
+                    avg_v += float(x)
+                avg_v /= len(data['voltage'])
+                data = edge_case(data, 150, avg_v)
                 filter_value = 0.005
                 filtered = Hilbert(data, filter_value)
+                if np.isnan(np.sum(filtered)):
+                    method = 0
+                else:
+                    method = 1
                 found = peak_detector(filtered, data)
-                found = check_loop(found, data, filter_value, file, space, print_plot)
+                found = check_loop(found, data, filter_value, file, space, print_plot, extreme)
                 bpm = calc_avg(interval, found, dur)
                 metrics = create_metrics(found, extreme, dur, bpm)
                 if print_plot:
-                    plot_data(data, filtered, found['index'], file)
+                    plot_data(data, filtered, found['index'], file, method)
                 write_json(file, metrics)
                 export_excel.append(metrics['num_beats'])
                 numb = file.split('.')[0]
