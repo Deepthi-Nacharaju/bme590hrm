@@ -11,7 +11,7 @@ from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
 
 
-def plot_data(data, filtered, index, file, method):
+def plot_data(data, filtered, index, file, method, user_interval):
     """ Plots original data, data envelope with low pass filter, and detected peaks
 
     Args:
@@ -37,12 +37,20 @@ def plot_data(data, filtered, index, file, method):
     data_points_df = pd.DataFrame(data_points, columns=headers)
     plt.plot(data['time'], data['voltage'])
     plt.scatter(data_points_df['time'], data_points_df['voltage'], c='red')
-    plt.plot(data['time'], filtered)
+    if not np.isnan(np.sum(filtered)):
+        plt.plot(data['time'], filtered)
+    if 0 < user_interval[0] < user_interval[1]:
+        if data['time'].max() > user_interval[1] > user_interval[0]:
+            plt.axvline(x=user_interval[0], c='orange')
+            plt.axvline(x=user_interval[1], c='orange')
     plt.axis('tight')
     plt.ylabel('Voltage')
     plt.xlabel('Time (s)')
     plt.title('ECG with Peak Detection: ' + str(file))
-    plt.legend(['ECG', 'LPF Envelope', 'Detected Peak'])
+    if not np.isnan(np.sum(filtered)):
+        plt.legend(['ECG', 'LPF Envelope', 'User Window', 'User Window', 'Detected Peak', ])
+    else:
+        plt.legend(['ECG', 'User Window', 'User Window', 'Detected Peak', ])
     plt.show()
     logging.info('This only outputs a plot')
     return
@@ -58,12 +66,8 @@ def calc_duration(data):
         dur: duration of input data
 
     """
-    try:
-        dur = data.loc[data.index[-1]]['time']-data.loc[1]['time']
-    except TypeError:
-        dur = float(data.loc[data.index[-1]]['time']) - \
-              float(data.loc[1]['time'])
-        logging.warning('Data type was not a float')
+    dur = float(data.loc[data.index[-1]]['time']) - \
+        float(data.loc[1]['time'])
     return dur
 
 
@@ -149,6 +153,9 @@ def user_input(duration, window=None):
             interval = duration
             print('No Time Window Indicated. Default = ' + str(interval))
             out = list([interval, False])
+            # Tests cannot be written for the above two try/except because
+            # when Travis runs tests with --pep8 argument
+            # sys.argv indices are no longer valid
         except ValueError:
             print('Running --pep8 test messes up argument numbers')
             print('Default = ' + str(duration))
@@ -163,8 +170,12 @@ def user_input(duration, window=None):
                 print('User Input Exceeds Data Duration. '
                       'Default = ' + str(duration))
                 out = list([duration, False])
-        except TypeError:
-            print('User input for window must be a tuple with two numbers')
+        except ValueError:
+            print('User input for window must be a tuple or array with two numbers')
+            print('Default = ' + str(duration))
+            out = list([duration, False])
+        except IndexError:
+            print('User input for window must be a tuple or array with two numbers')
             print('Default = ' + str(duration))
             out = list([duration, False])
     return out
@@ -188,7 +199,7 @@ def calc_avg(interval, found, dur):
         bpm_range = interval[0]
         bpm_count = 0
         for x in found['time']:
-            if bpm_range[0] > x < bpm_range[1]:
+            if bpm_range[0] < x < bpm_range[1]:
                 bpm_count += 1
         bpm = float(bpm_count)/(float(bpm_range[1])-float(bpm_range[0]))*60
 
@@ -269,11 +280,7 @@ def edge_case(data, amount, level):
     """
     extra = []
     headers = ['time', 'voltage']
-    try:
-        dt = data.loc[50]['time']-data.loc[49]['time']
-    except TypeError:
-        dt = float(data.loc[50]['time']) - float(data.loc[49]['time'])
-        logging.warning('data was not a float')
+    dt = float(data.loc[50]['time']) - float(data.loc[49]['time'])
     for x in range(0, amount):
         extra.append([dt*x+float(data.loc[len(data['time'])-1]['time']),
                       level])
@@ -400,14 +407,14 @@ def threshold_peak_detect(data, max_min, sign):
     if sign:
         thresh = .75 * float(max_val)
     else:
-        thresh = .75 * float(min_val)
+        thresh = -.75 * float(min_val)
     switch = False
     count = 0
     found = list()
     for index, x in enumerate(data['voltage']):
         x = float(x)
-        x = -1 * x
-        thresh = -1 * x
+        if not sign:
+            x = -1 * x
         if x > thresh and switch is False:
             switch = True
             count += 1
@@ -494,6 +501,7 @@ def main():
     file_number = list()
     space = 1
     print_plot = 1
+    user_interval = (2, 3) # SPECIFY USER WINDOW WITH THIS TUPLE IN SECONDS
     for file in os.listdir(os.getcwd()):
         print(file)
         try:
@@ -501,7 +509,7 @@ def main():
                 data = pd.read_csv(file, names=headers)
                 extreme = calc_v_extreme(data)
                 dur = calc_duration(data)
-                interval = user_input(dur, (2, 3))
+                interval = user_input(dur, user_interval)
                 data = is_data_valid(data)
                 avg_v = 0
                 for x in data['voltage']:
@@ -517,10 +525,11 @@ def main():
                 found = peak_detector(filtered, data)
                 found = check_loop(found, data, filter_value,
                                    file, space, print_plot, extreme)
+                print(interval)
                 bpm = calc_avg(interval, found, dur)
                 metrics = create_metrics(found, extreme, dur, bpm)
                 if print_plot:
-                    plot_data(data, filtered, found['index'], file, method)
+                    plot_data(data, filtered, found['index'], file, method, user_interval)
                 write_json(file, metrics)
                 export_excel.append(metrics['num_beats'])
                 numb = file.split('.')[0]
